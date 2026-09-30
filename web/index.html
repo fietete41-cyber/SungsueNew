@@ -217,7 +217,7 @@ a{color:#8db4ff}
       <label>ชื่อบัญชี</label><input id="st-holder">
       <label>หมายเหตุการโอน (ไม่บังคับ)</label><textarea id="st-pay" rows="2" placeholder="เช่น โอนแล้วแนบสลิปภายใน 3 วัน"></textarea>
       <label>เบอร์โทรแอดมิน (แสดงในปุ่ม "ติดต่อแอดมิน" ให้ลูกค้ากดโทรได้)</label><input id="st-tel" inputmode="tel" placeholder="เช่น 08x-xxx-xxxx">
-      <label>ค่าเพิ่มไซซ์ใหญ่ 3XL / 4XL / 5XL / 6XL (บาท / ตัว — ใช้กับสินค้าที่มีเสื้อทุกประเภท, 0 = ไม่คิด)</label><input id="st-big" type="number" inputmode="numeric">
+      <label>ค่าเพิ่มไซร์สใหญ่ 3XL / 4XL / 5XL / 6XL (บาท / ตัว — ใช้กับสินค้าที่มีเสื้อทุกประเภท, 0 = ไม่คิด)</label><input id="st-big" type="number" inputmode="numeric">
       <label>ค่าจัดส่ง (บาท / ออเดอร์)</label><input id="st-fee" type="number" inputmode="numeric">
       <button class="btn full" onclick="saveSettings()">บันทึกการตั้งค่า</button>
     </div>
@@ -278,7 +278,7 @@ a{color:#8db4ff}
 
 <div id="sz" onclick="if(event.target===this)closeSize()"><div class="panel">
   <div class="grab"></div>
-  <div class="row" style="justify-content:space-between"><b style="font-size:18px" id="sz-title">ตารางไซซ์เสื้อ</b><button class="btn sec" onclick="closeSize()">ปิด</button></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px" id="sz-title">ตารางไซร์สเสื้อ</b><button class="btn sec" onclick="closeSize()">ปิด</button></div>
   <div id="sz-body"></div>
 </div></div>
 
@@ -328,7 +328,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='20';
+var VER='21';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -340,9 +340,9 @@ function imgOf(p){var d=DEF[p.id];return {img:p.image||(d?'img/'+d[0]+'.jpg':'')
 var bigFee=0;
 function bigOpt(opt){var sz=String(opt||'').split(' / ')[1];sz=sz?sz.trim().toUpperCase():'';return ['3XL','4XL','5XL','6XL'].indexOf(sz)>=0}
 function unitPrice(p,opt){return p.price>0?p.price+(bigFee>0&&bigOpt(opt)?bigFee:0):0}
-function unitTxt(p,opt){return p.price>0?'฿'+unitPrice(p,opt).toLocaleString()+(unitPrice(p,opt)>p.price?' (ไซซ์ใหญ่ +฿'+bigFee+')':''):'ราคาแจ้งภายหลัง'}
+function unitTxt(p,opt){return p.price>0?'฿'+unitPrice(p,opt).toLocaleString()+(unitPrice(p,opt)>p.price?' (ไซร์สใหญ่ +฿'+bigFee+')':''):'ราคาแจ้งภายหลัง'}
 function hasBig(p){return p.options.some(function(o){return bigOpt(o)})}
-/* ---------- ตารางไซซ์เสื้อ (โปโล / เสื้อยืด) ---------- */
+/* ---------- ตารางไซร์สเสื้อ (โปโล / เสื้อยืด) ---------- */
 var SZ_SIZES=['S','M','L','XL','2XL','3XL','4XL','5XL','6XL'];
 var SZ_M={chest:[38,40,42,44,46,48,50,52,54],len:[27,28,29,30,31,32,33,33,33]};
 var SZ_F={chest:[34,36,38,40,42,44,46,48,50],len:[23,24,25,26,27,28,29,30,30]};
@@ -357,10 +357,10 @@ function szTable(cls,title,d){
 }
 function showSize(t){
   var c=SZ_TYPE[t];if(!c)return;
-  $('sz-title').textContent='ตารางไซซ์'+c.name;
+  $('sz-title').textContent='ตารางไซร์ส'+c.name;
   $('sz-body').innerHTML=szTable('m','ชาย (นิ้ว)',SZ_M)+szTable('f','หญิง (นิ้ว)',SZ_F)+
-    '<div class="mut" style="margin-top:10px">หมายเหตุ: ความกว้างรอบอกและความยาวตัวเสื้อ มีโอกาสคลาดเคลื่อนประมาณ ± 3%'+(bigFee>0?' · ไซซ์ 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว':'')+'</div>'+
-    '<button class="btn sec" style="width:100%;margin-top:12px" onclick="lb(\''+c.img+'\')">ดูภาพตารางไซซ์ต้นฉบับ</button>';
+    '<div class="mut" style="margin-top:10px">หมายเหตุ: ความกว้างรอบอกและความยาวตัวเสื้อ มีโอกาสคลาดเคลื่อนประมาณ ± 3%'+(bigFee>0?' · ไซร์ส 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว':'')+'</div>'+
+    '<button class="btn sec" style="width:100%;margin-top:12px" onclick="lb(\''+c.img+'\')">ดูภาพตารางไซร์สต้นฉบับ</button>';
 }
 function openSize(t){showSize(t);$('sz').classList.add('on');document.body.style.overflow='hidden'}
 function closeSize(){$('sz').classList.remove('on');document.body.style.overflow=''}
@@ -409,11 +409,11 @@ function renderProducts(){
   $('products').innerHTML=shop.products.map(function(p,i){
     var im=imgOf(p);var img=im.img?'<div class="pimg'+(im.big?' zoom':'')+'"'+(im.big?' onclick="lb(\''+esc(im.big)+'\')"':'')+'><img src="'+esc(im.img)+'" alt="'+esc(p.name)+'"></div>':'<div class="pimg" style="font-size:56px">🎁</div>';
     var opt=optHtml(p,'o'+i+'_',null,'prc('+i+')');
-    var guide=p.options.some(function(o){return o.indexOf('แผนก')>=0})?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="lb(\'img/ring-size-guide.jpg\')">วิธีวัดไซซ์แหวนด้วยตัวเอง</button>':'';
-    var szk=sizeKind(p),szb=szk?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="openSize(\''+szk+'\')">ตารางไซซ์เสื้อ</button>':'';
+    var guide=p.options.some(function(o){return o.indexOf('แผนก')>=0})?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="lb(\'img/ring-size-guide.jpg\')">วิธีวัดไซร์สแหวนด้วยตัวเอง</button>':'';
+    var szk=sizeKind(p),szb=szk?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="openSize(\''+szk+'\')">ตารางไซร์สเสื้อ</button>':'';
     var low=shop.mode==='order'&&p.stock!=null&&!p.soldOut&&p.stock<=10?'<span class="tag bad">เหลือ '+p.stock+'</span>':'';
     return '<div class="card p">'+img+'<div class="pb"><div class="row" style="justify-content:space-between;align-items:flex-start"><b class="pn">'+esc(p.name)+'</b>'+low+'</div>'+
-      '<div class="mut">'+esc(p.desc)+'</div><div class="price" id="pr'+i+'">'+priceTxt(p)+'</div>'+(bigFee>0&&hasBig(p)?'<div class="mut" style="font-size:12px">ไซซ์ 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว</div>':'')+opt+guide+szb+
+      '<div class="mut">'+esc(p.desc)+'</div><div class="price" id="pr'+i+'">'+priceTxt(p)+'</div>'+(bigFee>0&&hasBig(p)?'<div class="mut" style="font-size:12px">ไซร์ส 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว</div>':'')+opt+guide+szb+
       (p.soldOut&&shop.mode==='order'?'<div class="tag bad" style="margin-top:12px">สินค้าหมด</div>':
       '<div class="row" style="margin-top:12px"><div class="qty"><button onclick="chg('+i+',-1)">−</button><span id="q'+i+'">1</span><button onclick="chg('+i+',1)">+</button></div>'+
       '<button class="btn" style="flex:1" onclick="addCart('+i+')">เพิ่มลงตะกร้า</button></div>')+
@@ -566,7 +566,7 @@ function openEdit(who,orderNo,j){
   var c=ordCache[who+orderNo];if(!c)return;
   var it=c.items[j],p=prodById(it.id);if(!p)return toast('แก้ไขสินค้านี้ไม่ได้');
   edCtx={who:who,orderNo:orderNo,j:j,p:p};
-  var note=who==='cust'&&c.status==='ชำระแล้ว'?'ออเดอร์ชำระเงินแล้ว เปลี่ยนได้เฉพาะตัวเลือกที่ไม่ทำให้ราคาเปลี่ยน':(bigFee>0&&hasBig(p)?'ไซซ์ 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว ยอดรวมจะคำนวณใหม่ให้อัตโนมัติ':'ยอดรวมจะคำนวณใหม่ให้อัตโนมัติ');
+  var note=who==='cust'&&c.status==='ชำระแล้ว'?'ออเดอร์ชำระเงินแล้ว เปลี่ยนได้เฉพาะตัวเลือกที่ไม่ทำให้ราคาเปลี่ยน':(bigFee>0&&hasBig(p)?'ไซร์ส 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว ยอดรวมจะคำนวณใหม่ให้อัตโนมัติ':'ยอดรวมจะคำนวณใหม่ให้อัตโนมัติ');
   $('ed-body').innerHTML='<div style="margin:8px 0"><b>'+esc(p.name)+'</b><div class="mut">ออเดอร์ '+esc(orderNo)+'</div></div>'+
     optHtml(p,'ed_',curFor(p,it.opt),null)+'<div class="mut" style="margin-top:10px">'+note+'</div>'+
     '<button class="btn full" id="ed-btn" onclick="saveEdit()">บันทึกการแก้ไข</button>';
@@ -738,7 +738,7 @@ function renderSummary(){
       prods.map(function(p){return '<tr><td>'+esc(p.name)+'</td><td style="text-align:right;font-weight:700">'+(qtyBy[p.id]||0)+'</td><td style="text-align:right">฿'+(amt[p.id]||0).toLocaleString()+'</td></tr>'}).join('')+
       '<tr><td><b>รวม</b></td><td style="text-align:right"><b>'+tot.qty+'</b></td><td style="text-align:right"><b>฿'+tot.amt.toLocaleString()+'</b></td></tr></table></div>';
     if(rNeed>0)html+='<div style="margin-top:8px"><b>แหวน</b> '+ringTag+'</div>';
-    html+='<div class="mut" style="margin-top:8px">เลือกสินค้าในช่องด้านบนเพื่อดูรายละเอียดสี / ไซซ์</div>';
+    html+='<div class="mut" style="margin-top:8px">เลือกสินค้าในช่องด้านบนเพื่อดูรายละเอียดสี / ไซร์ส</div>';
   }else if(view==='group'){
     var gk=Object.keys(grp).sort(sortNum);
     html+=gk.length?'<div style="overflow-x:auto"><table><tr><th>รุ่น</th>'+prods.map(function(p){return '<th style="text-align:right">'+esc(p.name)+'</th>'}).join('')+'</tr>'+
@@ -758,7 +758,7 @@ function renderSummary(){
           mat[q[0]+'|'+q[1]]=(mat[q[0]+'|'+q[1]]||0)+cnt[key];
           for(var k=2;k<dims;k++){extra[k]=extra[k]||{};extra[k][q[k]]=(extra[k][q[k]]||0)+cnt[key]}
         });
-        html+='<div style="overflow-x:auto"><table><tr><th>'+esc(lb[1]||'ไซซ์')+'</th>'+cols.map(function(c){return '<th style="text-align:right">'+esc(c)+'</th>'}).join('')+'<th style="text-align:right">รวม</th></tr>'+
+        html+='<div style="overflow-x:auto"><table><tr><th>'+esc(lb[1]||'ไซร์ส')+'</th>'+cols.map(function(c){return '<th style="text-align:right">'+esc(c)+'</th>'}).join('')+'<th style="text-align:right">รวม</th></tr>'+
           rows.map(function(rw){var sum=0;var tds=cols.map(function(c){var n=mat[c+'|'+rw]||0;sum+=n;return '<td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td>'}).join('');
             return '<tr><td>'+esc(rw)+'</td>'+tds+'<td style="text-align:right;font-weight:700">'+sum+'</td></tr>'}).join('')+'</table></div>';
         for(var k2=2;k2<dims;k2++){
