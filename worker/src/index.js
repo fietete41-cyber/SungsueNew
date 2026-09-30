@@ -103,6 +103,7 @@ const API = {
       title: await setting(env, 'SHOP_TITLE', 'สั่งจองของที่ระลึก'),
       payInfo: await setting(env, 'PAY_INFO', ''),
       bank: await bankInfo(env),
+      contactPhone: await setting(env, 'CONTACT_PHONE', ''),
       mode: await setting(env, 'MODE', 'survey'),
       products: products.map((p) => ({
         id: p.id, name: p.name, price: p.price, options: p.options, optionLabel: p.optionLabel,
@@ -242,8 +243,9 @@ const API = {
     const c = await env.DB.prepare('SELECT COUNT(*) AS c FROM reports WHERE phone = ? AND created_at > ?').bind(phone, since).first();
     if (c.c >= 5) fail('ส่งเรื่องบ่อยเกินไป กรุณารอสักครู่ หรือติดต่อแอดมินโดยตรง');
     if (orderNo) message = '[ออเดอร์ ' + orderNo + '] ' + message;
-    await env.DB.prepare('INSERT INTO reports (created_at, name, phone, message) VALUES (?,?,?,?)')
-      .bind(new Date().toISOString(), name, phone, message).run();
+    const kind = d.kind === 'contact' ? 'contact' : 'problem';
+    await env.DB.prepare('INSERT INTO reports (created_at, name, phone, message, kind) VALUES (?,?,?,?,?)')
+      .bind(new Date().toISOString(), name, phone, message, kind).run();
     return true;
   },
 
@@ -251,7 +253,7 @@ const API = {
   async adminGetReports(env, pass) {
     checkAdmin(env, pass);
     const { results } = await env.DB.prepare('SELECT * FROM reports ORDER BY (status = \'ใหม่\') DESC, created_at DESC LIMIT 200').all();
-    return results.map((r) => ({ id: r.id, time: fmtShort(r.created_at), name: r.name, phone: r.phone, message: r.message, status: r.status }));
+    return results.map((r) => ({ id: r.id, time: fmtShort(r.created_at), name: r.name, phone: r.phone, message: r.message, kind: r.kind || 'problem', status: r.status }));
   },
 
   async adminSetReportStatus(env, pass, id, status) {
@@ -291,6 +293,7 @@ const API = {
         bankName: await setting(env, 'BANK_NAME', ''),
         bankAccount: await setting(env, 'BANK_ACCOUNT', ''),
         bankHolder: await setting(env, 'BANK_HOLDER', ''),
+        contactPhone: await setting(env, 'CONTACT_PHONE', ''),
         shipFee: Number(await setting(env, 'SHIP_FEE', '50')) || 0,
       },
     };
@@ -358,6 +361,11 @@ const API = {
     s = s || {};
     if (s.title !== undefined) await setSetting(env, 'SHOP_TITLE', String(s.title).trim() || 'สั่งจองของที่ระลึก');
     if (s.payInfo !== undefined) await setSetting(env, 'PAY_INFO', String(s.payInfo).trim().slice(0, 500));
+    if (s.contactPhone !== undefined) {
+      const t = String(s.contactPhone).trim();
+      if (t && !/^[0-9 \-+]{5,20}$/.test(t)) fail('เบอร์โทรแอดมิน ใส่ได้เฉพาะตัวเลขและขีด (-)');
+      await setSetting(env, 'CONTACT_PHONE', t);
+    }
     if (s.bankName !== undefined) await setSetting(env, 'BANK_NAME', String(s.bankName).trim().slice(0, 80));
     if (s.bankAccount !== undefined) {
       const acc = String(s.bankAccount).trim();

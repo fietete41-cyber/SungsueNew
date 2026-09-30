@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS reports (
   name       TEXT NOT NULL,
   phone      TEXT NOT NULL,
   message    TEXT NOT NULL,
+  kind       TEXT NOT NULL DEFAULT 'problem',  -- 'problem' แจ้งปัญหา | 'contact' ติดต่อแอดมิน
   status     TEXT NOT NULL DEFAULT 'ใหม่',  -- 'ใหม่' | 'จัดการแล้ว'
   handled_at TEXT NOT NULL DEFAULT ''
 );
@@ -79,3 +80,6 @@ INSERT OR IGNORE INTO products (id, sort, name, price, options, option_label, st
    'ขนาดแหวน', NULL, 1, 'img/ring.jpg',
    'เงินแท้ / สแตนเลส 316L (ตามงบประมาณ) ลงยาสีฟ้า หน้าแหวน 16-18 มม. — เลือกเบอร์นิ้ว 42-66 หรือเลือก "ขอวัดที่แผนกวิชา" แล้วไปวัดที่แผนกภายหลัง (กดปุ่มด้านล่างเพื่อดูวิธีวัดไซซ์ด้วยตัวเอง)',
    'img/poster-ring.jpg');
+
+-- (ฐานข้อมูลเดิมที่สร้างตาราง reports ไปแล้ว ให้รันครั้งเดียว)
+-- ALTER TABLE reports ADD COLUMN kind TEXT NOT NULL DEFAULT 'problem';

@@ -98,6 +98,14 @@ a{color:#8db4ff}
 @keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 .tabs button{position:relative}
 .badge{position:absolute;top:0;left:calc(50% + 6px);background:var(--bad);color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.fab{position:fixed;right:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:16;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.fab.up{bottom:calc(150px + env(safe-area-inset-bottom))}
+.fab-btn{width:56px;height:56px;border-radius:50%;border:0;background:linear-gradient(135deg,#f5b82e,#e59a0c);color:#231a00;box-shadow:0 8px 22px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.fab-btn svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.fab-menu{background:#0a1430;border:1px solid var(--bd);border-radius:16px;padding:8px;box-shadow:0 10px 28px rgba(0,0,0,.5);animation:up .2s ease;min-width:230px}
+.fab-menu button{display:flex;gap:10px;align-items:center;width:100%;background:none;border:0;color:var(--ink);font:inherit;padding:12px;border-radius:12px;cursor:pointer;text-align:left}
+.fab-menu button:active,.fab-menu button:hover{background:var(--pri2)}
+@media(min-width:700px){.fab{right:24px;bottom:24px}.fab.up{bottom:160px}}
 .rp-item{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-top:10px}
 .rp-item.new{border-color:var(--gold);background:rgba(245,184,46,.07)}
 .bankbox{background:rgba(255,255,255,.06);border:1px solid var(--bd);border-radius:16px;padding:14px;text-align:center;margin:10px 0}
@@ -121,8 +129,6 @@ a{color:#8db4ff}
   <div class="card goal"><b style="color:var(--gold)">จุดประสงค์การจัดทำ</b><div>รายได้จากการจำหน่ายทั้งหมด นำไปใช้เพื่อ <b>"บำรุงห้องเรียนแผนกวิชาช่างไฟฟ้ากำลัง"</b></div>
     <div class="mut">ปรับปรุงอุปกรณ์การเรียน · ซ่อมแซมโต๊ะเก้าอี้ · ปรับปรุงระบบไฟฟ้า-แสงสว่าง · ดูแลสภาพแวดล้อม</div></div>
   <div id="products" class="grid"><div class="mut">กำลังโหลด...</div></div>
-  <div class="card" style="text-align:center;margin-top:14px"><div class="mut">พบปัญหาการใช้งาน หรือมีข้อสงสัย?</div>
-    <button class="btn sec" style="margin-top:8px" onclick="openReport()">แจ้งปัญหา / ติดต่อแอดมิน</button></div>
 </section>
 
 <!-- ========== ลูกค้า: ตรวจสอบ ========== -->
@@ -132,8 +138,6 @@ a{color:#8db4ff}
     <div class="row"><input id="tk-phone" inputmode="tel"><button class="btn" onclick="track()">ค้นหา</button></div>
   </div>
   <div id="tk-list"></div>
-  <div class="card" style="text-align:center"><div class="mut">ไม่พบออเดอร์ หรือมีปัญหา?</div>
-    <button class="btn sec" style="margin-top:8px" onclick="openReport()">แจ้งปัญหา / ติดต่อแอดมิน</button></div>
 </section>
 
 <!-- ========== แอดมิน ========== -->
@@ -182,6 +186,7 @@ a{color:#8db4ff}
       <label>เลขบัญชี / เบอร์พร้อมเพย์</label><input id="st-acc" inputmode="numeric" placeholder="เช่น 123-4-56789-0">
       <label>ชื่อบัญชี</label><input id="st-holder">
       <label>หมายเหตุการโอน (ไม่บังคับ)</label><textarea id="st-pay" rows="2" placeholder="เช่น โอนแล้วแนบสลิปภายใน 3 วัน"></textarea>
+      <label>เบอร์โทรแอดมิน (แสดงในปุ่ม "ติดต่อแอดมิน" ให้ลูกค้ากดโทรได้)</label><input id="st-tel" inputmode="tel" placeholder="เช่น 08x-xxx-xxxx">
       <label>ค่าจัดส่ง (บาท / ออเดอร์)</label><input id="st-fee" type="number" inputmode="numeric">
       <button class="btn full" onclick="saveSettings()">บันทึกการตั้งค่า</button>
     </div>
@@ -219,14 +224,23 @@ a{color:#8db4ff}
   <button id="t-admin" onclick="tab('admin')"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>แอดมิน<span class="badge hide" id="admBadge">0</span></button>
 </div>
 
+<div class="fab" id="fab">
+  <div class="fab-menu hide" id="fab-menu">
+    <button onclick="openReport('problem')"><span>🛠️</span><span>แจ้งปัญหาการใช้งาน</span></button>
+    <button onclick="openReport('contact')"><span>💬</span><span>ติดต่อแอดมิน</span></button>
+  </div>
+  <button class="fab-btn" onclick="toggleFab()" aria-label="แจ้งปัญหา / ติดต่อแอดมิน"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4.5"/></svg></button>
+</div>
+
 <div id="rp" onclick="if(event.target===this)closeReport()"><div class="panel">
   <div class="grab"></div>
-  <div class="row" style="justify-content:space-between"><b style="font-size:18px">แจ้งปัญหา / ติดต่อแอดมิน</b><button class="btn sec" onclick="closeReport()">ปิด</button></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px" id="rp-title">แจ้งปัญหาการใช้งาน</b><button class="btn sec" onclick="closeReport()">ปิด</button></div>
   <div class="mut" style="margin-top:6px">แอดมินจะติดต่อกลับตามเบอร์โทรที่แจ้ง</div>
+  <a id="rp-call" class="btn hide" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="#">โทรหาแอดมิน</a>
   <label>ชื่อ-สกุล *</label><input id="rp-name" autocomplete="name">
   <label>เบอร์โทร *</label><input id="rp-phone" inputmode="tel" autocomplete="tel">
   <label>เลขที่ออเดอร์ (ถ้ามี)</label><input id="rp-order" placeholder="เช่น SV260930-001">
-  <label>ปัญหาที่พบ / สิ่งที่ต้องการแจ้ง *</label><textarea id="rp-msg" rows="4" maxlength="1000"></textarea>
+  <label id="rp-lbl">ปัญหาที่พบ *</label><textarea id="rp-msg" rows="4" maxlength="1000"></textarea>
   <button class="btn full" id="rp-btn" onclick="sendReport()">ส่งเรื่องให้แอดมิน</button>
 </div></div>
 
@@ -258,7 +272,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='10';
+var VER='11';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -290,7 +304,7 @@ function tab(t){
   cartVis();window.scrollTo(0,0);
   if(t==='admin')autoAdmin();
 }
-function cartVis(){$('cartBar').classList.toggle('hide',!(curTab==='shop'&&cart.length>0))}
+function cartVis(){var v=curTab==='shop'&&cart.length>0;$('cartBar').classList.toggle('hide',!v);var f=$('fab');if(f){f.classList.toggle('up',v);f.classList.toggle('hide',curTab==='admin')}}
 
 /* ---------- ลูกค้า ---------- */
 function load(){
@@ -506,7 +520,18 @@ document.addEventListener('keydown',function(e){
 });
 function adminLoad(){run('adminGetData',[ADMIN],function(d){adm=d;renderAdmin();loadReports()})}
 /* ---------- แจ้งปัญหา ---------- */
-function openReport(){
+var rpKind='problem';
+function toggleFab(){$('fab-menu').classList.toggle('hide')}
+document.addEventListener('click',function(e){var f=$('fab');if(f&&!f.contains(e.target))$('fab-menu').classList.add('hide')});
+function openReport(kind){
+  rpKind=kind==='contact'?'contact':'problem';
+  $('fab-menu').classList.add('hide');
+  $('rp-title').textContent=rpKind==='contact'?'ติดต่อแอดมิน':'แจ้งปัญหาการใช้งาน';
+  $('rp-lbl').textContent=rpKind==='contact'?'ข้อความถึงแอดมิน *':'ปัญหาที่พบ *';
+  $('rp-btn').textContent=rpKind==='contact'?'ส่งข้อความหาแอดมิน':'ส่งเรื่องให้แอดมิน';
+  var tel=shop&&shop.contactPhone?String(shop.contactPhone).trim():'',c=$('rp-call');
+  c.classList.toggle('hide',!(rpKind==='contact'&&tel));
+  if(tel){c.href='tel:'+tel.replace(/[^0-9+]/g,'');c.textContent='โทรหาแอดมิน '+tel}
   if(!$('rp-name').value)$('rp-name').value=$('f-name').value||'';
   if(!$('rp-phone').value)$('rp-phone').value=$('tk-phone').value||$('f-phone').value||'';
   $('rp').classList.add('on');document.body.style.overflow='hidden';
@@ -517,7 +542,7 @@ function sendReport(){
   if(!n)return toast('กรุณากรอกชื่อ-สกุล');
   if(p.replace(/\D/g,'').length<9)return toast('กรุณากรอกเบอร์โทรให้ถูกต้อง เพื่อให้แอดมินติดต่อกลับ');
   if(m.length<5)return toast('กรุณาอธิบายปัญหาให้ละเอียดขึ้นเล็กน้อย');
-  run('submitReport',[{name:n,phone:p,message:m,orderNo:$('rp-order').value}],function(){
+  run('submitReport',[{name:n,phone:p,message:m,orderNo:$('rp-order').value,kind:rpKind}],function(){
     $('rp-msg').value='';$('rp-order').value='';closeReport();toast('ส่งเรื่องให้แอดมินแล้ว จะติดต่อกลับตามเบอร์ที่แจ้ง');
   },$('rp-btn'));
 }
@@ -535,7 +560,7 @@ function renderReports(){
   $('rp-count').textContent=n+' ใหม่';
   $('rp-list').innerHTML=reports.length?reports.map(function(x){
     var isNew=x.status==='ใหม่';
-    return '<div class="rp-item'+(isNew?' new':'')+'"><div class="row" style="justify-content:space-between"><b>'+esc(x.name)+'</b><span class="mut">'+esc(x.time)+'</span></div>'+
+    return '<div class="rp-item'+(isNew?' new':'')+'"><div class="row" style="justify-content:space-between"><b>'+esc(x.name)+' <span class="tag'+(x.kind==='contact'?'':' bad')+'">'+(x.kind==='contact'?'ติดต่อ':'แจ้งปัญหา')+'</span></b><span class="mut">'+esc(x.time)+'</span></div>'+
       '<div style="margin:4px 0"><a href="tel:'+esc(x.phone)+'">โทร '+esc(x.phone)+'</a></div><pre>'+esc(x.message)+'</pre>'+
       '<div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn sec" onclick="setReport('+x.id+',\''+(isNew?'จัดการแล้ว':'ใหม่')+'\')">'+(isNew?'จัดการแล้ว':'เปิดใหม่')+'</button>'+
       '<button class="btn sec" onclick="delReport('+x.id+')">ลบ</button></div></div>';
@@ -618,7 +643,7 @@ function renderAdmin(){
     if(bn&&BANKS.indexOf(bn)<0){var op=document.createElement('option');op.textContent=bn;sb.appendChild(op)}
     sb.value=bn;
     $('st-title').value=adm.settings.title;$('st-pay').value=adm.settings.payInfo;$('st-fee').value=adm.settings.shipFee;
-    $('st-acc').value=adm.settings.bankAccount||'';$('st-holder').value=adm.settings.bankHolder||''}
+    $('st-acc').value=adm.settings.bankAccount||'';$('st-tel').value=adm.settings.contactPhone||'';$('st-holder').value=adm.settings.bankHolder||''}
   $('ad-modeLbl').textContent=MODE_LBL[adm.mode]||adm.mode;
   var pp=$('ad-pp'),pcur=pp.value;
   pp.innerHTML=adm.products.map(function(p){return '<option value="'+p.row+'">'+esc(p.name)+'</option>'}).join('');
@@ -645,7 +670,7 @@ var ST_ICON={'สำรวจ':'📋','รอชำระเงิน':'⏳','�
 function stLbl(s){return (ST_ICON[s]?ST_ICON[s]+' ':'')+s}
 var BANKS=['ธนาคารกรุงเทพ','ธนาคารกสิกรไทย','ธนาคารกรุงไทย','ธนาคารไทยพาณิชย์','ธนาคารกรุงศรีอยุธยา','ธนาคารทหารไทยธนชาต (ttb)','ธนาคารออมสิน','ธนาคารเพื่อการเกษตรและสหกรณ์ (ธ.ก.ส.)','ธนาคารอาคารสงเคราะห์ (ธอส.)','ธนาคารยูโอบี','ธนาคารซีไอเอ็มบี ไทย','ธนาคารเกียรตินาคินภัทร','ธนาคารทิสโก้','ธนาคารแลนด์ แอนด์ เฮ้าส์','พร้อมเพย์ (PromptPay)'];
 function saveSettings(){
-  run('adminSetSettings',[ADMIN,{title:$('st-title').value,payInfo:$('st-pay').value,shipFee:$('st-fee').value,bankName:$('st-bank').value,bankAccount:$('st-acc').value,bankHolder:$('st-holder').value}],function(){toast('บันทึกการตั้งค่าแล้ว');adminLoad();load()});
+  run('adminSetSettings',[ADMIN,{title:$('st-title').value,payInfo:$('st-pay').value,shipFee:$('st-fee').value,bankName:$('st-bank').value,bankAccount:$('st-acc').value,bankHolder:$('st-holder').value,contactPhone:$('st-tel').value}],function(){toast('บันทึกการตั้งค่าแล้ว');adminLoad();load()});
 }
 function renderProdEdit(){
   var row=$('ad-pp').value,p=adm.products.filter(function(x){return String(x.row)===String(row)})[0];
