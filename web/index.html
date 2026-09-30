@@ -79,10 +79,10 @@ a{color:#8db4ff}
   .bar{bottom:96px}
 }
 /* แผ่นล่าง (ตะกร้า + ข้อมูลผู้สั่ง) */
-#sheet,#pm{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
-#sheet.on,#pm.on{display:flex}
+#sheet,#pm,#rp{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
+#sheet.on,#pm.on,#rp.on{display:flex}
 .panel{background:#0a1430;border:1px solid var(--bd);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:93vh;overflow:auto;padding:12px 16px calc(18px + env(safe-area-inset-bottom));animation:up .25s ease}
-@media(min-width:700px){#sheet,#pm{align-items:center}.panel{border-radius:22px}}
+@media(min-width:700px){#sheet,#pm,#rp{align-items:center}.panel{border-radius:22px}}
 @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 .grab{width:44px;height:4px;background:var(--bd);border-radius:9px;margin:0 auto 10px}
 .cl{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)}
@@ -96,6 +96,10 @@ a{color:#8db4ff}
 .keypad button:active{background:var(--pri2)}
 .shake{animation:shk .35s}
 @keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.tabs button{position:relative}
+.badge{position:absolute;top:0;left:calc(50% + 6px);background:var(--bad);color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.rp-item{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-top:10px}
+.rp-item.new{border-color:var(--gold);background:rgba(245,184,46,.07)}
 .bankbox{background:rgba(255,255,255,.06);border:1px solid var(--bd);border-radius:16px;padding:14px;text-align:center;margin:10px 0}
 .acc{font-size:26px;font-weight:700;color:var(--gold);letter-spacing:1px;margin:2px 0 6px;word-break:break-all}
 </style></style>
@@ -117,6 +121,8 @@ a{color:#8db4ff}
   <div class="card goal"><b style="color:var(--gold)">จุดประสงค์การจัดทำ</b><div>รายได้จากการจำหน่ายทั้งหมด นำไปใช้เพื่อ <b>"บำรุงห้องเรียนแผนกวิชาช่างไฟฟ้ากำลัง"</b></div>
     <div class="mut">ปรับปรุงอุปกรณ์การเรียน · ซ่อมแซมโต๊ะเก้าอี้ · ปรับปรุงระบบไฟฟ้า-แสงสว่าง · ดูแลสภาพแวดล้อม</div></div>
   <div id="products" class="grid"><div class="mut">กำลังโหลด...</div></div>
+  <div class="card" style="text-align:center;margin-top:14px"><div class="mut">พบปัญหาการใช้งาน หรือมีข้อสงสัย?</div>
+    <button class="btn sec" style="margin-top:8px" onclick="openReport()">แจ้งปัญหา / ติดต่อแอดมิน</button></div>
 </section>
 
 <!-- ========== ลูกค้า: ตรวจสอบ ========== -->
@@ -126,6 +132,8 @@ a{color:#8db4ff}
     <div class="row"><input id="tk-phone" inputmode="tel"><button class="btn" onclick="track()">ค้นหา</button></div>
   </div>
   <div id="tk-list"></div>
+  <div class="card" style="text-align:center"><div class="mut">ไม่พบออเดอร์ หรือมีปัญหา?</div>
+    <button class="btn sec" style="margin-top:8px" onclick="openReport()">แจ้งปัญหา / ติดต่อแอดมิน</button></div>
 </section>
 
 <!-- ========== แอดมิน ========== -->
@@ -145,6 +153,10 @@ a{color:#8db4ff}
   <div id="ad-body" class="hide">
     <div class="row" style="justify-content:flex-end;margin-bottom:8px"><button class="btn sec" onclick="adminLogout()">ออกจากระบบ</button></div>
     <div class="stat" id="ad-stat"></div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b>📨 ปัญหาที่ผู้ใช้แจ้ง</b><span class="tag" id="rp-count">0 ใหม่</span></div>
+      <div id="rp-list"><div class="mut" style="margin-top:8px">ยังไม่มีเรื่องแจ้ง</div></div>
+    </div>
     <div class="card">
       <b>📦 สรุปจำนวนที่สั่ง</b>
       <div class="row" style="margin-top:8px">
@@ -193,7 +205,7 @@ a{color:#8db4ff}
     <div id="ad-orders"></div>
   </div>
 </section>
-  <div class="mut" style="text-align:center;margin:24px 0 0;font-size:12px">เวอร์ชัน <span id="ver"></span></div>
+  <div class="mut" style="text-align:center;margin:24px 0 0;font-size:12px">พัฒนาระบบโดย ครูรังสรรค์ ลอยแก้ว<br>ครูประจำแผนกวิชาช่างไฟฟ้ากำลัง</div>
 </main>
 
 <div class="bar hide" id="cartBar">
@@ -204,8 +216,19 @@ a{color:#8db4ff}
 <div class="tabs">
   <button id="t-shop" class="on" onclick="tab('shop')"><svg viewBox="0 0 24 24"><path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>สั่งจอง</button>
   <button id="t-track" onclick="tab('track')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>ตรวจสอบ</button>
-  <button id="t-admin" onclick="tab('admin')"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>แอดมิน</button>
+  <button id="t-admin" onclick="tab('admin')"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>แอดมิน<span class="badge hide" id="admBadge">0</span></button>
 </div>
+
+<div id="rp" onclick="if(event.target===this)closeReport()"><div class="panel">
+  <div class="grab"></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px">แจ้งปัญหา / ติดต่อแอดมิน</b><button class="btn sec" onclick="closeReport()">ปิด</button></div>
+  <div class="mut" style="margin-top:6px">แอดมินจะติดต่อกลับตามเบอร์โทรที่แจ้ง</div>
+  <label>ชื่อ-สกุล *</label><input id="rp-name" autocomplete="name">
+  <label>เบอร์โทร *</label><input id="rp-phone" inputmode="tel" autocomplete="tel">
+  <label>เลขที่ออเดอร์ (ถ้ามี)</label><input id="rp-order" placeholder="เช่น SV260930-001">
+  <label>ปัญหาที่พบ / สิ่งที่ต้องการแจ้ง *</label><textarea id="rp-msg" rows="4" maxlength="1000"></textarea>
+  <button class="btn full" id="rp-btn" onclick="sendReport()">ส่งเรื่องให้แอดมิน</button>
+</div></div>
 
 <div id="pm" onclick="if(event.target===this)closePay()"><div class="panel">
   <div class="grab"></div>
@@ -235,7 +258,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='8';
+var VER='10';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -474,14 +497,53 @@ function autoAdmin(){
 }
 function adminLogout(){
   try{localStorage.removeItem('sv_pin')}catch(e){}
-  ADMIN='';adm=null;pin='';pinDraw();
+  ADMIN='';adm=null;pin='';pinDraw();reports=[];prevNew=-1;renderReports();
   $('ad-body').classList.add('hide');$('ad-login').classList.remove('hide');
 }
 document.addEventListener('keydown',function(e){
   if(curTab!=='admin'||$('ad-login').classList.contains('hide'))return;
   if(/^\d$/.test(e.key))pinKey(e.key);else if(e.key==='Backspace')pinKey('b');
 });
-function adminLoad(){run('adminGetData',[ADMIN],function(d){adm=d;renderAdmin()})}
+function adminLoad(){run('adminGetData',[ADMIN],function(d){adm=d;renderAdmin();loadReports()})}
+/* ---------- แจ้งปัญหา ---------- */
+function openReport(){
+  if(!$('rp-name').value)$('rp-name').value=$('f-name').value||'';
+  if(!$('rp-phone').value)$('rp-phone').value=$('tk-phone').value||$('f-phone').value||'';
+  $('rp').classList.add('on');document.body.style.overflow='hidden';
+}
+function closeReport(){$('rp').classList.remove('on');document.body.style.overflow=''}
+function sendReport(){
+  var n=$('rp-name').value.trim(),p=$('rp-phone').value,m=$('rp-msg').value.trim();
+  if(!n)return toast('กรุณากรอกชื่อ-สกุล');
+  if(p.replace(/\D/g,'').length<9)return toast('กรุณากรอกเบอร์โทรให้ถูกต้อง เพื่อให้แอดมินติดต่อกลับ');
+  if(m.length<5)return toast('กรุณาอธิบายปัญหาให้ละเอียดขึ้นเล็กน้อย');
+  run('submitReport',[{name:n,phone:p,message:m,orderNo:$('rp-order').value}],function(){
+    $('rp-msg').value='';$('rp-order').value='';closeReport();toast('ส่งเรื่องให้แอดมินแล้ว จะติดต่อกลับตามเบอร์ที่แจ้ง');
+  },$('rp-btn'));
+}
+var reports=[],prevNew=-1;
+function loadReports(){
+  run('adminGetReports',[ADMIN],function(l){
+    reports=l;var n=l.filter(function(x){return x.status==='ใหม่'}).length;
+    if(prevNew>=0&&n>prevNew)toast('มีเรื่องแจ้งปัญหาใหม่ '+(n-prevNew)+' รายการ');
+    prevNew=n;renderReports();
+  },null,function(){});
+}
+function renderReports(){
+  var n=reports.filter(function(x){return x.status==='ใหม่'}).length;
+  var b=$('admBadge');b.textContent=n;b.classList.toggle('hide',!n);
+  $('rp-count').textContent=n+' ใหม่';
+  $('rp-list').innerHTML=reports.length?reports.map(function(x){
+    var isNew=x.status==='ใหม่';
+    return '<div class="rp-item'+(isNew?' new':'')+'"><div class="row" style="justify-content:space-between"><b>'+esc(x.name)+'</b><span class="mut">'+esc(x.time)+'</span></div>'+
+      '<div style="margin:4px 0"><a href="tel:'+esc(x.phone)+'">โทร '+esc(x.phone)+'</a></div><pre>'+esc(x.message)+'</pre>'+
+      '<div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn sec" onclick="setReport('+x.id+',\''+(isNew?'จัดการแล้ว':'ใหม่')+'\')">'+(isNew?'จัดการแล้ว':'เปิดใหม่')+'</button>'+
+      '<button class="btn sec" onclick="delReport('+x.id+')">ลบ</button></div></div>';
+  }).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มีเรื่องแจ้ง</div>';
+}
+function setReport(id,st){run('adminSetReportStatus',[ADMIN,id,st],function(){loadReports()})}
+function delReport(id){askConfirm('ลบเรื่องนี้ใช่หรือไม่?',function(){run('adminDeleteReport',[ADMIN,id],function(){loadReports()})})}
+setInterval(function(){if(ADMIN)loadReports()},60000);
 var PAID=['ชำระแล้ว','กำลังผลิต','พร้อมรับ','รับแล้ว'];
 function sortNum(a,b){return a.localeCompare(b,'th',{numeric:true})}
 function renderSummary(){
@@ -614,7 +676,7 @@ function exportCsv(){
   var csv='﻿'+rows.map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='orders.csv';a.click();
 }
-$('ver').textContent=VER;pinDraw();
+pinDraw();
 load();
 </script>
 </body>

@@ -229,7 +229,46 @@ const API = {
     return { method, fee };
   },
 
+  async submitReport(env, d) {
+    d = d || {};
+    const name = String(d.name || '').trim().slice(0, 80);
+    const phone = digits(d.phone);
+    let message = String(d.message || '').trim().slice(0, 1000);
+    const orderNo = String(d.orderNo || '').trim().slice(0, 30);
+    if (!name) fail('กรุณากรอกชื่อ-สกุล');
+    if (phone.length < 9) fail('กรุณากรอกเบอร์โทรให้ถูกต้อง เพื่อให้แอดมินติดต่อกลับ');
+    if (message.length < 5) fail('กรุณาอธิบายปัญหาให้ละเอียดขึ้นเล็กน้อย');
+    const since = new Date(Date.now() - 3600 * 1000).toISOString();
+    const c = await env.DB.prepare('SELECT COUNT(*) AS c FROM reports WHERE phone = ? AND created_at > ?').bind(phone, since).first();
+    if (c.c >= 5) fail('ส่งเรื่องบ่อยเกินไป กรุณารอสักครู่ หรือติดต่อแอดมินโดยตรง');
+    if (orderNo) message = '[ออเดอร์ ' + orderNo + '] ' + message;
+    await env.DB.prepare('INSERT INTO reports (created_at, name, phone, message) VALUES (?,?,?,?)')
+      .bind(new Date().toISOString(), name, phone, message).run();
+    return true;
+  },
+
   /* ---------- API: แอดมิน ---------- */
+  async adminGetReports(env, pass) {
+    checkAdmin(env, pass);
+    const { results } = await env.DB.prepare('SELECT * FROM reports ORDER BY (status = \'ใหม่\') DESC, created_at DESC LIMIT 200').all();
+    return results.map((r) => ({ id: r.id, time: fmtShort(r.created_at), name: r.name, phone: r.phone, message: r.message, status: r.status }));
+  },
+
+  async adminSetReportStatus(env, pass, id, status) {
+    checkAdmin(env, pass);
+    if (status !== 'ใหม่' && status !== 'จัดการแล้ว') fail('สถานะไม่ถูกต้อง');
+    const r = await env.DB.prepare('UPDATE reports SET status = ?, handled_at = ? WHERE id = ?')
+      .bind(status, status === 'จัดการแล้ว' ? new Date().toISOString() : '', Number(id)).run();
+    if (!r.meta.changes) fail('ไม่พบรายการ');
+    return true;
+  },
+
+  async adminDeleteReport(env, pass, id) {
+    checkAdmin(env, pass);
+    await env.DB.prepare('DELETE FROM reports WHERE id = ?').bind(Number(id)).run();
+    return true;
+  },
+
   async adminLogin(env, pass) {
     checkAdmin(env, pass);
     return { statuses: STATUSES };
