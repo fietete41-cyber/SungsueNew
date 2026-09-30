@@ -205,6 +205,7 @@ a{color:#8db4ff}
       <label>ชื่อบัญชี</label><input id="st-holder">
       <label>หมายเหตุการโอน (ไม่บังคับ)</label><textarea id="st-pay" rows="2" placeholder="เช่น โอนแล้วแนบสลิปภายใน 3 วัน"></textarea>
       <label>เบอร์โทรแอดมิน (แสดงในปุ่ม "ติดต่อแอดมิน" ให้ลูกค้ากดโทรได้)</label><input id="st-tel" inputmode="tel" placeholder="เช่น 08x-xxx-xxxx">
+      <label>ค่าเพิ่มไซซ์ใหญ่ 4XL / 5XL / 6XL (บาท / ตัว — ใช้กับสินค้าที่มีเสื้อทุกประเภท, 0 = ไม่คิด)</label><input id="st-big" type="number" inputmode="numeric">
       <label>ค่าจัดส่ง (บาท / ออเดอร์)</label><input id="st-fee" type="number" inputmode="numeric">
       <button class="btn full" onclick="saveSettings()">บันทึกการตั้งค่า</button>
     </div>
@@ -303,7 +304,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='14';
+var VER='15';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -312,6 +313,12 @@ function lb(src){$('lb-img').src=src;$('lb').style.display='block'}
 // รูปสำรองตาม id สินค้า (กรณีชีตไม่ได้ใส่รูป)
 var DEF={polo:['polo','polo'],shirt:['polo','polo'],tee:['tee','tee'],mug:['mug','mug'],ring:['ring','ring']};
 function imgOf(p){var d=DEF[p.id];return {img:p.image||(d?'img/'+d[0]+'.jpg':''),big:(p.poster&&p.poster!=='img/poster-shirt.jpg'?p.poster:'')||(d?'img/poster-'+d[1]+'.jpg':'')}}
+var bigFee=0;
+function bigOpt(opt){var sz=String(opt||'').split(' / ')[1];sz=sz?sz.trim().toUpperCase():'';return ['4XL','5XL','6XL'].indexOf(sz)>=0}
+function unitPrice(p,opt){return p.price>0?p.price+(bigFee>0&&bigOpt(opt)?bigFee:0):0}
+function unitTxt(p,opt){return p.price>0?'฿'+unitPrice(p,opt).toLocaleString()+(unitPrice(p,opt)>p.price?' (ไซซ์ใหญ่ +฿'+bigFee+')':''):'ราคาแจ้งภายหลัง'}
+function hasBig(p){return p.options.some(function(o){return bigOpt(o)})}
+function prc(i){var p=shop.products[i],e=$('pr'+i);if(e)e.textContent=unitTxt(p,optVal(i,p))}
 function priceTxt(p){return p.price>0?'฿'+p.price.toLocaleString():'ราคาแจ้งภายหลัง'}
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -341,7 +348,7 @@ function cartVis(){var v=curTab==='shop'&&cart.length>0;$('cartBar').classList.t
 function load(){
   run('getShop',[],function(s){
     shop=s; var PFX={survey:'แบบสำรวจ',pay:'ชำระเงิน',order:'',closed:'ปิดรับ'}, ttl=(PFX[s.mode]||'')+s.title; $('title').textContent=ttl; document.title=ttl;
-    bank=s.bank;$('payBank').innerHTML=bankHtml(s.bank);
+    bank=s.bank;bigFee=Number(s.bigSizeFee)||0;$('payBank').innerHTML=bankHtml(s.bank);
     var m=s.mode, open=(m==='survey'||m==='order');
     $('payCard').classList.toggle('hide',m!=='order');
     $('closedBanner').classList.toggle('hide',open);
@@ -361,7 +368,7 @@ function renderProducts(){
       if(two){
         var a=[],b=[];p.options.forEach(function(o){var s=o.split(' / ');if(a.indexOf(s[0])<0)a.push(s[0]);if(b.indexOf(s[1])<0)b.push(s[1])});
         var ln=String(p.optionLabel).split(' / ');
-        var mk=function(id,l,arr){return '<div><label>'+esc(l||'')+'</label><select id="'+id+i+'">'+arr.map(function(o){return '<option>'+esc(o)+'</option>'}).join('')+'</select></div>'};
+        var mk=function(id,l,arr){return '<div><label>'+esc(l||'')+'</label><select id="'+id+i+'" onchange="prc('+i+')">'+arr.map(function(o){return '<option>'+esc(o)+'</option>'}).join('')+'</select></div>'};
         opt='<div class="sel2">'+mk('oa',ln[0],a)+mk('ob',ln[1],b)+'</div>';
       }else opt='<label>'+esc(p.optionLabel)+'</label><select id="o'+i+'">'+
         p.options.map(function(o){return '<option>'+esc(o)+'</option>'}).join('')+'</select>';
@@ -369,7 +376,7 @@ function renderProducts(){
     var guide=p.options.some(function(o){return o.indexOf('แผนก')>=0})?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="lb(\'img/ring-size-guide.jpg\')">วิธีวัดไซซ์แหวนด้วยตัวเอง</button>':'';
     var low=shop.mode==='order'&&p.stock!=null&&!p.soldOut&&p.stock<=10?'<span class="tag bad">เหลือ '+p.stock+'</span>':'';
     return '<div class="card p">'+img+'<div class="pb"><div class="row" style="justify-content:space-between;align-items:flex-start"><b class="pn">'+esc(p.name)+'</b>'+low+'</div>'+
-      '<div class="mut">'+esc(p.desc)+'</div><div class="price">'+priceTxt(p)+'</div>'+opt+guide+
+      '<div class="mut">'+esc(p.desc)+'</div><div class="price" id="pr'+i+'">'+priceTxt(p)+'</div>'+(bigFee>0&&hasBig(p)?'<div class="mut" style="font-size:12px">ไซซ์ 4XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว</div>':'')+opt+guide+
       (p.soldOut&&shop.mode==='order'?'<div class="tag bad" style="margin-top:12px">สินค้าหมด</div>':
       '<div class="row" style="margin-top:12px"><div class="qty"><button onclick="chg('+i+',-1)">−</button><span id="q'+i+'">1</span><button onclick="chg('+i+',1)">+</button></div>'+
       '<button class="btn" style="flex:1" onclick="addCart('+i+')">เพิ่มลงตะกร้า</button></div>')+
@@ -392,7 +399,7 @@ function addCart(i){
 }
 function items(){return cart.map(function(l){return {id:shop.products[l.i].id,qty:l.qty,opt:l.opt,_p:shop.products[l.i]}})}
 function totalTxt(){
-  var t=0,tbd=false;items().forEach(function(x){t+=x._p.price*x.qty;if(!(x._p.price>0))tbd=true});
+  var t=0,tbd=false;items().forEach(function(x){t+=unitPrice(x._p,x.opt)*x.qty;if(!(x._p.price>0))tbd=true});
   return tbd&&t===0?'ราคาแจ้งภายหลัง':'฿'+t.toLocaleString()+(tbd?' + รายการที่ยังไม่แจ้งราคา':'');
 }
 function upd(){
@@ -401,7 +408,7 @@ function upd(){
 }
 function renderCart(){
   $('cartList').innerHTML=items().map(function(x,k){
-    return '<div class="cl"><div style="flex:1;min-width:0"><b>'+esc(x._p.name)+'</b><div class="mut">'+esc(x.opt||'')+(x.opt?' · ':'')+priceTxt(x._p)+'</div></div>'+
+    return '<div class="cl"><div style="flex:1;min-width:0"><b>'+esc(x._p.name)+'</b><div class="mut">'+esc(x.opt||'')+(x.opt?' · ':'')+unitTxt(x._p,x.opt)+'</div></div>'+
       '<div class="qty"><button onclick="cl('+k+',-1)">−</button><span>'+x.qty+'</span><button onclick="cl('+k+',1)">+</button></div>'+
       '<button class="x" onclick="cl('+k+',0)">✕</button></div>';
   }).join('');
@@ -679,7 +686,7 @@ function renderAdmin(){
     if(!sb.options.length)sb.innerHTML='<option value="">— เลือกธนาคาร —</option>'+BANKS.map(function(b){return '<option>'+b+'</option>'}).join('');
     if(bn&&BANKS.indexOf(bn)<0){var op=document.createElement('option');op.textContent=bn;sb.appendChild(op)}
     sb.value=bn;
-    $('st-title').value=adm.settings.title;$('st-pay').value=adm.settings.payInfo;$('st-fee').value=adm.settings.shipFee;
+    $('st-title').value=adm.settings.title;$('st-pay').value=adm.settings.payInfo;$('st-fee').value=adm.settings.shipFee;$('st-big').value=adm.settings.bigSizeFee;
     $('st-acc').value=adm.settings.bankAccount||'';$('st-tel').value=adm.settings.contactPhone||'';$('st-holder').value=adm.settings.bankHolder||''}
   $('ad-modeLbl').textContent=MODE_LBL[adm.mode]||adm.mode;
   var pp=$('ad-pp'),pcur=pp.value;
@@ -707,7 +714,7 @@ var ST_ICON={'สำรวจ':'📋','รอชำระเงิน':'⏳','�
 function stLbl(s){return (ST_ICON[s]?ST_ICON[s]+' ':'')+s}
 var BANKS=['ธนาคารกรุงเทพ','ธนาคารกสิกรไทย','ธนาคารกรุงไทย','ธนาคารไทยพาณิชย์','ธนาคารกรุงศรีอยุธยา','ธนาคารทหารไทยธนชาต (ttb)','ธนาคารออมสิน','ธนาคารเพื่อการเกษตรและสหกรณ์ (ธ.ก.ส.)','ธนาคารอาคารสงเคราะห์ (ธอส.)','ธนาคารยูโอบี','ธนาคารซีไอเอ็มบี ไทย','ธนาคารเกียรตินาคินภัทร','ธนาคารทิสโก้','ธนาคารแลนด์ แอนด์ เฮ้าส์','พร้อมเพย์ (PromptPay)'];
 function saveSettings(){
-  run('adminSetSettings',[ADMIN,{title:$('st-title').value,payInfo:$('st-pay').value,shipFee:$('st-fee').value,bankName:$('st-bank').value,bankAccount:$('st-acc').value,bankHolder:$('st-holder').value,contactPhone:$('st-tel').value}],function(){toast('บันทึกการตั้งค่าแล้ว');adminLoad();load()});
+  run('adminSetSettings',[ADMIN,{title:$('st-title').value,payInfo:$('st-pay').value,shipFee:$('st-fee').value,bigSizeFee:$('st-big').value,bankName:$('st-bank').value,bankAccount:$('st-acc').value,bankHolder:$('st-holder').value,contactPhone:$('st-tel').value}],function(){toast('บันทึกการตั้งค่าแล้ว');adminLoad();load()});
 }
 function renderProdEdit(){
   var row=$('ad-pp').value,p=adm.products.filter(function(x){return String(x.row)===String(row)})[0];

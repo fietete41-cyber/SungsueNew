@@ -16,6 +16,13 @@ const CORS = {
 };
 const STATUSES = ['สำรวจ', 'รอชำระเงิน', 'ชำระแล้ว', 'กำลังผลิต', 'พร้อมรับ', 'รับแล้ว', 'ยกเลิก'];
 const MODES = ['survey', 'pay', 'order', 'closed'];
+// ไซซ์ใหญ่ (4XL ขึ้นไป) บวกเพิ่มต่อตัว — ใช้กับทุกสินค้าที่มีตัวเลือกไซซ์เหล่านี้ (เสื้อ / เซ็ตที่มีเสื้อ)
+const BIG_SIZES = ['4XL', '5XL', '6XL'];
+function sizeOf(opt) { const s = String(opt || '').split(' / ')[1]; return s ? s.trim().toUpperCase() : ''; }
+const isBig = (opt) => BIG_SIZES.includes(sizeOf(opt));
+const unitPrice = (p, opt, fee) => (p.price > 0 ? p.price + (fee > 0 && isBig(opt) ? fee : 0) : 0);
+const lineText = (p, opt, qty, extra) =>
+  p.name + (p.options.length ? ' (' + p.optionLabel + ' ' + opt + ')' : '') + (extra > 0 ? ' (+฿' + extra + ')' : '') + ' x' + qty;
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
@@ -104,6 +111,7 @@ const API = {
       payInfo: await setting(env, 'PAY_INFO', ''),
       bank: await bankInfo(env),
       contactPhone: await setting(env, 'CONTACT_PHONE', ''),
+      bigSizeFee: Number(await setting(env, 'BIG_SIZE_FEE', '50')) || 0,
       mode: await setting(env, 'MODE', 'survey'),
       products: products.map((p) => ({
         id: p.id, name: p.name, price: p.price, options: p.options, optionLabel: p.optionLabel,
@@ -124,6 +132,7 @@ const API = {
     if (!Array.isArray(data.items) || !data.items.length) fail('ยังไม่ได้เลือกสินค้า');
 
     const products = await readProducts(env);
+    const bigFee = Number(await setting(env, 'BIG_SIZE_FEE', '50')) || 0;
     const byId = {};
     products.forEach((p) => { byId[p.id] = p; });
     const need = {}, lines = [], clean = [];
@@ -136,9 +145,10 @@ const API = {
       if (!(qty > 0) || qty > 50) fail('จำนวนไม่ถูกต้อง: ' + p.name);
       if (p.options.length && p.options.indexOf(it.opt) < 0) fail('กรุณาเลือก' + p.optionLabel + ': ' + p.name);
       need[p.id] = (need[p.id] || 0) + qty;
-      total += p.price * qty;
-      lines.push(p.name + (p.options.length ? ` (${p.optionLabel} ${it.opt})` : '') + ' x' + qty);
-      clean.push({ id: p.id, name: p.name, opt: it.opt || '', qty, price: p.price });
+      const unit = unitPrice(p, it.opt, bigFee);
+      total += unit * qty;
+      lines.push(lineText(p, it.opt, qty, unit > p.price ? unit - p.price : 0));
+      clean.push({ id: p.id, name: p.name, opt: it.opt || '', qty, price: unit });
     });
 
     if (useStock) {
@@ -294,6 +304,7 @@ const API = {
         bankAccount: await setting(env, 'BANK_ACCOUNT', ''),
         bankHolder: await setting(env, 'BANK_HOLDER', ''),
         contactPhone: await setting(env, 'CONTACT_PHONE', ''),
+        bigSizeFee: Number(await setting(env, 'BIG_SIZE_FEE', '50')) || 0,
         shipFee: Number(await setting(env, 'SHIP_FEE', '50')) || 0,
       },
     };
@@ -342,8 +353,28 @@ const API = {
     if (!MODES.includes(mode)) fail('โหมดไม่ถูกต้อง');
     let converted = 0;
     if (mode === 'pay') {
-      const r = await env.DB.prepare("UPDATE orders SET status = 'รอชำระเงิน' WHERE status = 'สำรวจ'").run();
-      converted = r.meta.changes || 0;
+      const products = await readProducts(env);
+      const byId = {};
+      products.forEach((p) => { byId[p.id] = p; });
+      const bigFee = Number(await setting(env, 'BIG_SIZE_FEE', '50')) || 0;
+      const { results } = await env.DB.prepare("SELECT order_no, items_json FROM orders WHERE status = 'สำรวจ'").all();
+      const stmts = results.map((o) => {
+        let items = [];
+        try { items = JSON.parse(o.items_json); } catch (e) { /* ignore */ }
+        let total = 0;
+        const lines = [];
+        items = items.map((it) => {
+          const p = byId[it.id];
+          const unit = p ? unitPrice(p, it.opt, bigFee) : Number(it.price) || 0;
+          total += unit * it.qty;
+          lines.push(p ? lineText(p, it.opt, it.qty, unit > p.price ? unit - p.price : 0) : it.name + ' x' + it.qty);
+          return { ...it, price: unit };
+        });
+        return env.DB.prepare("UPDATE orders SET total = ?, items_json = ?, items_text = ?, status = 'รอชำระเงิน' WHERE order_no = ?")
+          .bind(total, JSON.stringify(items), lines.join('\n'), o.order_no);
+      });
+      for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
+      converted = stmts.length;
     }
     await setSetting(env, 'MODE', mode);
     return { converted };
@@ -361,6 +392,7 @@ const API = {
     s = s || {};
     if (s.title !== undefined) await setSetting(env, 'SHOP_TITLE', String(s.title).trim() || 'สั่งจองของที่ระลึก');
     if (s.payInfo !== undefined) await setSetting(env, 'PAY_INFO', String(s.payInfo).trim().slice(0, 500));
+    if (s.bigSizeFee !== undefined) await setSetting(env, 'BIG_SIZE_FEE', String(Math.max(0, Math.round(Number(s.bigSizeFee) || 0))));
     if (s.contactPhone !== undefined) {
       const t = String(s.contactPhone).trim();
       if (t && !/^[0-9 \-+]{5,20}$/.test(t)) fail('เบอร์โทรแอดมิน ใส่ได้เฉพาะตัวเลขและขีด (-)');
