@@ -63,6 +63,15 @@ async function readProducts(env) {
   }));
 }
 
+async function bankInfo(env) {
+  return {
+    name: await setting(env, 'BANK_NAME', ''),
+    account: await setting(env, 'BANK_ACCOUNT', ''),
+    holder: await setting(env, 'BANK_HOLDER', ''),
+    note: await setting(env, 'PAY_INFO', ''),
+  };
+}
+
 async function uploadSlip(env, orderNo, slip) {
   if (!env.APPS_SCRIPT_URL || env.APPS_SCRIPT_URL.startsWith('PUT_')) fail('ยังไม่ได้ตั้งค่าที่เก็บสลิป');
   const body = new URLSearchParams({
@@ -93,6 +102,7 @@ const API = {
     return {
       title: await setting(env, 'SHOP_TITLE', 'สั่งจองของที่ระลึก'),
       payInfo: await setting(env, 'PAY_INFO', ''),
+      bank: await bankInfo(env),
       mode: await setting(env, 'MODE', 'survey'),
       products: products.map((p) => ({
         id: p.id, name: p.name, price: p.price, options: p.options, optionLabel: p.optionLabel,
@@ -188,6 +198,7 @@ const API = {
         addr: r.addr || '', dphone: r.dphone || '',
       })),
       payInfo: await setting(env, 'PAY_INFO', ''),
+      bank: await bankInfo(env),
       shipFee: Number(await setting(env, 'SHIP_FEE', '50')) || 0,
     };
   },
@@ -238,6 +249,9 @@ const API = {
       settings: {
         title: await setting(env, 'SHOP_TITLE', 'สั่งจองของที่ระลึก'),
         payInfo: await setting(env, 'PAY_INFO', ''),
+        bankName: await setting(env, 'BANK_NAME', ''),
+        bankAccount: await setting(env, 'BANK_ACCOUNT', ''),
+        bankHolder: await setting(env, 'BANK_HOLDER', ''),
         shipFee: Number(await setting(env, 'SHIP_FEE', '50')) || 0,
       },
     };
@@ -304,7 +318,14 @@ const API = {
     checkAdmin(env, pass);
     s = s || {};
     if (s.title !== undefined) await setSetting(env, 'SHOP_TITLE', String(s.title).trim() || 'สั่งจองของที่ระลึก');
-    if (s.payInfo !== undefined) await setSetting(env, 'PAY_INFO', String(s.payInfo).trim());
+    if (s.payInfo !== undefined) await setSetting(env, 'PAY_INFO', String(s.payInfo).trim().slice(0, 500));
+    if (s.bankName !== undefined) await setSetting(env, 'BANK_NAME', String(s.bankName).trim().slice(0, 80));
+    if (s.bankAccount !== undefined) {
+      const acc = String(s.bankAccount).trim();
+      if (acc && !/^[0-9 \-]{5,30}$/.test(acc)) fail('เลขบัญชี/เบอร์พร้อมเพย์ ใส่ได้เฉพาะตัวเลขและขีด (-)');
+      await setSetting(env, 'BANK_ACCOUNT', acc);
+    }
+    if (s.bankHolder !== undefined) await setSetting(env, 'BANK_HOLDER', String(s.bankHolder).trim().slice(0, 120));
     if (s.shipFee !== undefined) await setSetting(env, 'SHIP_FEE', String(Math.max(0, Math.round(Number(s.shipFee) || 0))));
     return true;
   },

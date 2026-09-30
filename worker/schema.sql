@@ -45,7 +45,10 @@ CREATE TABLE IF NOT EXISTS settings (
 INSERT OR IGNORE INTO settings (key, value) VALUES
   ('MODE', 'survey'),
   ('SHOP_TITLE', 'สั่งจองของที่ระลึก'),
-  ('PAY_INFO', 'ธนาคาร xxx เลขที่ xxx-x-xxxxx-x ชื่อบัญชี xxxxxxxx'),
+  ('PAY_INFO', ''),
+  ('BANK_NAME', ''),
+  ('BANK_ACCOUNT', ''),
+  ('BANK_HOLDER', ''),
   ('SHIP_FEE', '50');
 
 -- สินค้าเริ่มต้น (ราคา 0 = "ราคาแจ้งภายหลัง")

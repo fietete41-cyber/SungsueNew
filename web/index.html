@@ -79,10 +79,10 @@ a{color:#8db4ff}
   .bar{bottom:96px}
 }
 /* แผ่นล่าง (ตะกร้า + ข้อมูลผู้สั่ง) */
-#sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
-#sheet.on{display:flex}
+#sheet,#pm{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
+#sheet.on,#pm.on{display:flex}
 .panel{background:#0a1430;border:1px solid var(--bd);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:93vh;overflow:auto;padding:12px 16px calc(18px + env(safe-area-inset-bottom));animation:up .25s ease}
-@media(min-width:700px){#sheet{align-items:center}.panel{border-radius:22px}}
+@media(min-width:700px){#sheet,#pm{align-items:center}.panel{border-radius:22px}}
 @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 .grab{width:44px;height:4px;background:var(--bd);border-radius:9px;margin:0 auto 10px}
 .cl{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)}
@@ -96,6 +96,8 @@ a{color:#8db4ff}
 .keypad button:active{background:var(--pri2)}
 .shake{animation:shk .35s}
 @keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.bankbox{background:rgba(255,255,255,.06);border:1px solid var(--bd);border-radius:16px;padding:14px;text-align:center;margin:10px 0}
+.acc{font-size:26px;font-weight:700;color:var(--gold);letter-spacing:1px;margin:2px 0 6px;word-break:break-all}
 </style></style>
 </head>
 <body>
@@ -164,7 +166,10 @@ a{color:#8db4ff}
     <div class="card">
       <b>ตั้งค่าร้าน</b>
       <label>ชื่อหน้าร้าน (ต่อท้ายคำนำหน้าตามโหมด)</label><input id="st-title">
-      <label>ข้อมูลบัญชีรับโอน (แสดงให้ลูกค้าตอนชำระเงิน)</label><textarea id="st-pay" rows="3"></textarea>
+      <label>ธนาคาร</label><select id="st-bank"></select>
+      <label>เลขบัญชี / เบอร์พร้อมเพย์</label><input id="st-acc" inputmode="numeric" placeholder="เช่น 123-4-56789-0">
+      <label>ชื่อบัญชี</label><input id="st-holder">
+      <label>หมายเหตุการโอน (ไม่บังคับ)</label><textarea id="st-pay" rows="2" placeholder="เช่น โอนแล้วแนบสลิปภายใน 3 วัน"></textarea>
       <label>ค่าจัดส่ง (บาท / ออเดอร์)</label><input id="st-fee" type="number" inputmode="numeric">
       <button class="btn full" onclick="saveSettings()">บันทึกการตั้งค่า</button>
     </div>
@@ -202,6 +207,12 @@ a{color:#8db4ff}
   <button id="t-admin" onclick="tab('admin')"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>แอดมิน</button>
 </div>
 
+<div id="pm" onclick="if(event.target===this)closePay()"><div class="panel">
+  <div class="grab"></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px">ชำระเงิน</b><button class="btn sec" onclick="closePay()">ปิด</button></div>
+  <div id="pm-body"></div>
+</div></div>
+
 <div id="sheet" onclick="if(event.target===this)closeSheet()"><div class="panel">
   <div class="grab"></div>
   <div class="row" style="justify-content:space-between"><b style="font-size:18px">ตะกร้าของคุณ</b><button class="btn sec" onclick="closeSheet()">ปิด</button></div>
@@ -216,7 +227,7 @@ a{color:#8db4ff}
 
   <div id="payCard" style="margin-top:14px">
     <b>ชำระเงิน</b>
-    <pre id="payInfo" class="mut"></pre>
+    <div id="payBank"></div>
     <label>แนบสลิปโอนเงิน (ไม่บังคับ แนบทีหลังได้)</label>
     <input type="file" id="f-slip" accept="image/*">
   </div>
@@ -224,7 +235,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='7';
+var VER='8';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -262,7 +273,7 @@ function cartVis(){$('cartBar').classList.toggle('hide',!(curTab==='shop'&&cart.
 function load(){
   run('getShop',[],function(s){
     shop=s; var PFX={survey:'แบบสำรวจ',pay:'ชำระเงิน',order:'',closed:'ปิดรับ'}, ttl=(PFX[s.mode]||'')+s.title; $('title').textContent=ttl; document.title=ttl;
-    $('payInfo').textContent=s.payInfo;
+    bank=s.bank;$('payBank').innerHTML=bankHtml(s.bank);
     var m=s.mode, open=(m==='survey'||m==='order');
     $('payCard').classList.toggle('hide',m!=='order');
     $('closedBanner').classList.toggle('hide',open);
@@ -363,18 +374,42 @@ function submit(){
   });
 }
 function track(){
-  run('trackOrders',[$('tk-phone').value],function(res){var l=res.orders;
+  run('trackOrders',[$('tk-phone').value],function(res){var l=res.orders;lastOrders=l;bank=res.bank;
     $('tk-list').innerHTML=l.length?l.map(function(o,k){
       var cls=o.status==='ยกเลิก'?'bad':(o.status==='ชำระแล้ว'||o.status==='พร้อมรับ'||o.status==='รับแล้ว'?'ok':'');
       return '<div class="card"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="tag '+cls+'">'+esc(stLbl(o.status))+'</span></div>'+
         '<div class="mut">'+esc(o.time)+'</div><pre>'+esc(o.items)+'</pre>'+(o.ringSize?'<div class="mut">ขนาดแหวน: '+esc(o.ringSize)+'</div>':'')+'<div class="price">'+payTxt(o)+'</div>'+dlvBlock(o,k,res.shipFee)+
         (o.status==='สำรวจ'?'<div class="mut">อยู่ระหว่างสำรวจ ยังไม่ต้องชำระเงิน</div><button class="btn sec" onclick="cancelMine(\''+o.orderNo+'\')">ยกเลิกรายการนี้</button>':'')+
-        (o.status==='รอชำระเงิน'&&!o.hasSlip?'<pre class="mut"><b>โอนเงินที่:</b>\n'+esc(res.payInfo)+'</pre>':'')+
-        (o.hasSlip?'<div class="mut">✔ แนบสลิปแล้ว</div>':
-         (o.status==='รอชำระเงิน'?'<label>แนบสลิป</label><input type="file" accept="image/*" onchange="sendSlip(this,\''+o.orderNo+'\')">':''))+'</div>';
+        (o.hasSlip?'<div class="mut" style="margin-top:8px">✔ แนบสลิปแล้ว รอแอดมินตรวจสอบ</div>':'')+
+        (o.status==='รอชำระเงิน'?'<button class="btn full" onclick="openPay('+k+')">'+(o.hasSlip?'ดูบัญชี / ส่งสลิปใหม่':'ชำระเงิน')+'</button>':'')+'</div>';
     }).join(''):'<div class="card mut">ไม่พบออเดอร์</div>';
   });
 }
+var bank=null,lastOrders=[];
+function bankHtml(b){
+  if(!b||!b.account)return '<div class="banner" style="margin:10px 0">ผู้ดูแลยังไม่ได้ตั้งค่าเลขบัญชี กรุณาติดต่อแอดมิน</div>'+(b&&b.note?'<pre class="mut">'+esc(b.note)+'</pre>':'');
+  return '<div class="bankbox"><div class="mut">'+esc(b.name||'ธนาคาร')+'</div><div class="acc">'+esc(b.account)+'</div>'+
+    (b.holder?'<div>ชื่อบัญชี: <b>'+esc(b.holder)+'</b></div>':'')+
+    '<button class="btn sec" style="margin-top:10px" onclick="copyAcc()">คัดลอกเลขบัญชี</button></div>'+
+    (b.note?'<pre class="mut">'+esc(b.note)+'</pre>':'');
+}
+function copyAcc(){
+  if(!bank||!bank.account)return;
+  var t=String(bank.account).replace(/\D/g,'');
+  function ok(){toast('คัดลอกเลขบัญชีแล้ว')}
+  function fb(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){toast('คัดลอกไม่ได้ กรุณาจดเลขบัญชีเอง')}a.remove()}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+}
+function openPay(k){
+  var o=lastOrders[k];if(!o)return;
+  $('pm-body').innerHTML='<div class="mut" style="margin-top:6px">ออเดอร์ '+esc(o.orderNo)+'</div>'+
+    '<div style="margin:8px 0"><span class="mut">ยอดที่ต้องโอน</span><div class="price" style="font-size:24px">'+payTxt(o)+'</div></div>'+
+    '<b>โอนเข้าบัญชี</b>'+bankHtml(bank)+
+    '<label>หลังโอนแล้ว แนบสลิปที่นี่</label><input type="file" accept="image/*" onchange="sendSlip(this,\''+o.orderNo+'\',closePay)">'+
+    '<div class="mut" style="margin-top:6px">แนบสลิปทีหลังได้ โดยกลับมาที่หน้านี้อีกครั้ง</div>';
+  $('pm').classList.add('on');document.body.style.overflow='hidden';
+}
+function closePay(){$('pm').classList.remove('on');document.body.style.overflow=''}
 function payTxt(o){
   var t=Number(o.total),f=Number(o.fee)||0;
   if(!(t>0))return 'ราคาแจ้งภายหลัง'+(f?' + ค่าจัดส่ง ฿'+f:'');
@@ -403,12 +438,12 @@ function askConfirm(msg,cb){$('cf-msg').textContent=msg;cfCb=cb;$('cf').classLis
 function cfNo(){$('cf').classList.add('hide');cfCb=null}
 function cfYes(){var f=cfCb;cfNo();if(f)f()}
 function cancelMine(no){askConfirm('ยืนยันยกเลิกรายการนี้?',function(){run('cancelMyOrder',[no,$('tk-phone').value],function(){toast('ยกเลิกแล้ว');track()})})}
-function sendSlip(inp,no){
+function sendSlip(inp,no,after){
   var f=inp.files[0]; if(!f)return; var fr=new FileReader(), img=new Image();
   fr.onload=function(){img.onload=function(){
     var s=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement('canvas');
     c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-    run('attachSlip',[no,$('tk-phone').value,{base64:c.toDataURL('image/jpeg',.8).split(',')[1],mime:'image/jpeg'}],function(){toast('ส่งสลิปแล้ว');track()});
+    run('attachSlip',[no,$('tk-phone').value,{base64:c.toDataURL('image/jpeg',.8).split(',')[1],mime:'image/jpeg'}],function(){toast('ส่งสลิปแล้ว');if(after)after();track()});
   };img.src=fr.result};fr.readAsDataURL(f);
 }
 
@@ -516,7 +551,12 @@ function renderAdmin(){
   sp.value=cur;if(sp.value!==cur)sp.value='all';
   renderSummary();
   $('ad-mode').value=adm.mode;
-  if(adm.settings){$('st-title').value=adm.settings.title;$('st-pay').value=adm.settings.payInfo;$('st-fee').value=adm.settings.shipFee}
+  if(adm.settings){var sb=$('st-bank'),bn=adm.settings.bankName||'';
+    if(!sb.options.length)sb.innerHTML='<option value="">— เลือกธนาคาร —</option>'+BANKS.map(function(b){return '<option>'+b+'</option>'}).join('');
+    if(bn&&BANKS.indexOf(bn)<0){var op=document.createElement('option');op.textContent=bn;sb.appendChild(op)}
+    sb.value=bn;
+    $('st-title').value=adm.settings.title;$('st-pay').value=adm.settings.payInfo;$('st-fee').value=adm.settings.shipFee;
+    $('st-acc').value=adm.settings.bankAccount||'';$('st-holder').value=adm.settings.bankHolder||''}
   $('ad-modeLbl').textContent=MODE_LBL[adm.mode]||adm.mode;
   var pp=$('ad-pp'),pcur=pp.value;
   pp.innerHTML=adm.products.map(function(p){return '<option value="'+p.row+'">'+esc(p.name)+'</option>'}).join('');
@@ -541,8 +581,9 @@ function renderOrders(){
 var MODE_LBL={survey:'📋 สำรวจ',pay:'💳 เปิดชำระเงิน',order:'🛒 จองพร้อมจ่าย',closed:'⏸️ ปิดรับ'};
 var ST_ICON={'สำรวจ':'📋','รอชำระเงิน':'⏳','ชำระแล้ว':'✅','กำลังผลิต':'🛠️','พร้อมรับ':'📦','รับแล้ว':'🎉','ยกเลิก':'❌'};
 function stLbl(s){return (ST_ICON[s]?ST_ICON[s]+' ':'')+s}
+var BANKS=['ธนาคารกรุงเทพ','ธนาคารกสิกรไทย','ธนาคารกรุงไทย','ธนาคารไทยพาณิชย์','ธนาคารกรุงศรีอยุธยา','ธนาคารทหารไทยธนชาต (ttb)','ธนาคารออมสิน','ธนาคารเพื่อการเกษตรและสหกรณ์ (ธ.ก.ส.)','ธนาคารอาคารสงเคราะห์ (ธอส.)','ธนาคารยูโอบี','ธนาคารซีไอเอ็มบี ไทย','ธนาคารเกียรตินาคินภัทร','ธนาคารทิสโก้','ธนาคารแลนด์ แอนด์ เฮ้าส์','พร้อมเพย์ (PromptPay)'];
 function saveSettings(){
-  run('adminSetSettings',[ADMIN,{title:$('st-title').value,payInfo:$('st-pay').value,shipFee:$('st-fee').value}],function(){toast('บันทึกการตั้งค่าแล้ว');adminLoad();load()});
+  run('adminSetSettings',[ADMIN,{title:$('st-title').value,payInfo:$('st-pay').value,shipFee:$('st-fee').value,bankName:$('st-bank').value,bankAccount:$('st-acc').value,bankHolder:$('st-holder').value}],function(){toast('บันทึกการตั้งค่าแล้ว');adminLoad();load()});
 }
 function renderProdEdit(){
   var row=$('ad-pp').value,p=adm.products.filter(function(x){return String(x.row)===String(row)})[0];
