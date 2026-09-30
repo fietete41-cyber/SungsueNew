@@ -278,8 +278,7 @@ a{color:#8db4ff}
 
 <div id="sz" onclick="if(event.target===this)closeSize()"><div class="panel">
   <div class="grab"></div>
-  <div class="row" style="justify-content:space-between"><b style="font-size:18px">ตารางไซซ์เสื้อ</b><button class="btn sec" onclick="closeSize()">ปิด</button></div>
-  <div class="sz-tabs"><button class="btn sec" id="sz-t-polo" onclick="showSize('polo')">เสื้อโปโล</button><button class="btn sec" id="sz-t-tee" onclick="showSize('tee')">เสื้อยืด</button></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px" id="sz-title">ตารางไซซ์เสื้อ</b><button class="btn sec" onclick="closeSize()">ปิด</button></div>
   <div id="sz-body"></div>
 </div></div>
 
@@ -329,7 +328,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='19';
+var VER='20';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -358,8 +357,8 @@ function szTable(cls,title,d){
 }
 function showSize(t){
   var c=SZ_TYPE[t];if(!c)return;
-  ['polo','tee'].forEach(function(k){$('sz-t-'+k).classList.toggle('on',k===t)});
-  $('sz-body').innerHTML='<div class="mut">ตารางไซซ์'+c.name+'</div>'+szTable('m','ชาย (นิ้ว)',SZ_M)+szTable('f','หญิง (นิ้ว)',SZ_F)+
+  $('sz-title').textContent='ตารางไซซ์'+c.name;
+  $('sz-body').innerHTML=szTable('m','ชาย (นิ้ว)',SZ_M)+szTable('f','หญิง (นิ้ว)',SZ_F)+
     '<div class="mut" style="margin-top:10px">หมายเหตุ: ความกว้างรอบอกและความยาวตัวเสื้อ มีโอกาสคลาดเคลื่อนประมาณ ± 3%'+(bigFee>0?' · ไซซ์ 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว':'')+'</div>'+
     '<button class="btn sec" style="width:100%;margin-top:12px" onclick="lb(\''+c.img+'\')">ดูภาพตารางไซซ์ต้นฉบับ</button>';
 }
