@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+.dev.vars
+.vercel/
+# ข้อมูลย้ายระบบครั้งเดียว (มีชื่อ/เบอร์ลูกค้า)
+seed.sql
+tools/old-data.json
+*.log
+Thumbs.db

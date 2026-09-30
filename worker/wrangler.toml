@@ -1,0 +1,21 @@
+name = "souvenir-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# --- Cloudflare D1 (ฐานข้อมูล) ---
+# สร้างด้วย:  npx wrangler d1 create souvenir
+# แล้วเอา database_id ที่ได้มาใส่ตรงนี้
+[[d1_databases]]
+binding = "DB"
+database_name = "souvenir"
+database_id = "769bd911-1eb8-4e94-b8a7-377126364753"
+
+# --- ตัวแปรปกติ (ไม่ลับ) ---
+[vars]
+# URL /exec ของ Apps Script ตัวจิ๋วที่ทำหน้าที่เก็บสลิปลง Google Drive
+APPS_SCRIPT_URL = "PUT_APPS_SCRIPT_EXEC_URL_HERE"
+
+# --- ค่าลับ ตั้งด้วยคำสั่ง (อย่าใส่ในไฟล์นี้) ---
+#   npx wrangler secret put ADMIN_PASS   -> PIN แอดมิน 6 หลัก
+#   npx wrangler secret put UPLOAD_KEY   -> สตริงสุ่ม (ต้องตรงกับ Script property UPLOAD_KEY ใน Apps Script)

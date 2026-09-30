@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050b1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>สั่งจองของที่ระลึก</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050b1a;--card:rgba(10,18,40,.74);--ink:#eef3ff;--mut:#9fb0d3;--pri:#2f7bff;--pri2:rgba(47,123,255,.18);--gold:#f5b82e;--ok:#3ddc84;--bad:#ff6b6b;--bd:rgba(130,170,255,.2)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Sarabun,sans-serif;font-size:16px;-webkit-text-size-adjust:100%}
+body:before{content:'';position:fixed;inset:-10px;z-index:-2;background:url(img/bg.jpg) center top/cover no-repeat;filter:blur(6px) brightness(.6)}
+body:after{content:'';position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(5,11,26,.5),rgba(5,11,26,.9))}
+.hero{position:relative;height:176px;background:url(img/hero.jpg) center 15%/cover;display:flex;align-items:flex-end;padding:0 16px 16px}
+.hero:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,11,26,.15) 0%,rgba(5,11,26,.55) 55%,rgba(5,11,26,.97) 100%)}
+.hero>div{position:relative;z-index:1;max-width:980px;margin:0 auto;width:100%}
+.hero h1{margin:0;font-size:25px;line-height:1.2;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.hero .sub{color:var(--gold);font-size:13px;letter-spacing:.4px;margin-top:2px}
+main{max-width:980px;margin:0 auto;padding:12px 14px 170px}
+.card{background:var(--card);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--bd);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.card.goal{border-left:4px solid var(--gold);text-align:left;font-size:15px}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
+.grid .card{margin:0}
+.card.p{padding:0;overflow:hidden}
+.pb{padding:12px 14px 14px}
+.pimg{background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden;min-height:90px}
+.pimg img{width:100%;height:auto;display:block}
+.pimg.zoom{cursor:zoom-in;position:relative}
+.pimg.zoom:after{content:'🔍 ดูรูปใหญ่';position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;padding:3px 10px;border-radius:99px}
+#lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;overflow:auto;display:none;padding:12px;text-align:center}
+#lb img{max-width:100%;height:auto;border-radius:8px}
+#lb button{position:fixed;top:12px;right:14px;width:42px;height:42px;border-radius:50%;border:0;font-size:22px;cursor:pointer}
+.sel2{display:flex;gap:8px}.sel2>div{flex:1}
+.pn{font-size:18px}
+.price{color:var(--gold);font-weight:700;font-size:19px;margin-top:2px}
+.mut{color:var(--mut);font-size:14px}
+label{display:block;font-size:14px;color:var(--mut);margin:10px 0 4px}
+input,select,textarea{width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;font:inherit;font-size:16px;background:rgba(255,255,255,.06);color:var(--ink)}
+input[type=file]{padding:9px}
+select option{background:#0a1430;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--pri);outline-offset:0}
+.row{display:flex;gap:8px;align-items:center}
+.qty{display:flex;align-items:center;gap:6px}
+.qty button{width:38px;height:38px;border-radius:50%;border:1px solid var(--bd);background:rgba(255,255,255,.06);color:var(--ink);font-size:20px;cursor:pointer}
+.qty span{min-width:24px;text-align:center;font-weight:700}
+.btn{background:linear-gradient(135deg,#2f7bff,#1c56d6);color:#fff;border:0;border-radius:12px;padding:12px 16px;font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+.btn.sec{background:var(--pri2);color:#a9c8ff}
+.btn.bad{background:var(--bad)}
+.btn.full{width:100%;margin-top:14px}
+.btn:disabled{opacity:.5}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:13px;background:var(--pri2);color:#a9c8ff;font-weight:600}
+.tag.ok{background:rgba(61,220,132,.16);color:var(--ok)}.tag.bad{background:rgba(255,107,107,.16);color:var(--bad)}
+.hide{display:none!important}
+.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#eef3ff;color:#0a1430;padding:10px 18px;border-radius:12px;z-index:60;max-width:90%;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+pre{white-space:pre-wrap;font:inherit;margin:4px 0}
+.banner{background:rgba(245,184,46,.14);border:1px solid rgba(245,184,46,.4);color:var(--gold);padding:10px;border-radius:12px;margin-bottom:12px;text-align:center}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:7px 6px;border-bottom:1px solid var(--bd);text-align:left}
+a{color:#8db4ff}
+.stat{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.stat div{flex:1;min-width:110px;background:var(--pri2);border-radius:14px;padding:10px;text-align:center}
+.stat b{display:block;font-size:20px;color:var(--gold)}
+/* แถบเมนูล่างแบบแอป */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;background:rgba(6,12,28,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--bd);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.tabs button{flex:1;background:none;border:0;color:var(--mut);font:inherit;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;border-radius:12px;cursor:pointer}
+.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button.on{color:var(--gold)}
+/* แถบตะกร้า */
+.bar{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:14;max-width:600px;margin:0 auto;background:linear-gradient(135deg,#2f7bff,#1b4fc4);border-radius:16px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 10px 28px rgba(20,60,160,.55)}
+.bar b{font-size:18px}
+.bar .btn{background:#fff;color:#0b2a6f}
+@media(min-width:700px){
+  .tabs{left:50%;right:auto;transform:translateX(-50%);bottom:14px;width:440px;border:1px solid var(--bd);border-radius:22px;padding-bottom:6px}
+  .bar{bottom:96px}
+}
+/* แผ่นล่าง (ตะกร้า + ข้อมูลผู้สั่ง) */
+#sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
+#sheet.on{display:flex}
+.panel{background:#0a1430;border:1px solid var(--bd);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:93vh;overflow:auto;padding:12px 16px calc(18px + env(safe-area-inset-bottom));animation:up .25s ease}
+@media(min-width:700px){#sheet{align-items:center}.panel{border-radius:22px}}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.grab{width:44px;height:4px;background:var(--bd);border-radius:9px;margin:0 auto 10px}
+.cl{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)}
+.cl .x{background:none;border:0;color:var(--mut);font-size:18px;cursor:pointer;padding:6px}
+.ok-ico{width:64px;height:64px;border-radius:50%;background:rgba(61,220,132,.16);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 6px}
+.dots{display:flex;justify-content:center;gap:12px;margin:14px 0 6px}
+.dots span{width:15px;height:15px;border-radius:50%;border:2px solid var(--gold)}
+.dots span.f{background:var(--gold)}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:290px;margin:12px auto}
+.keypad button{height:58px;font:inherit;font-size:22px;font-weight:600;border-radius:16px;border:1px solid var(--bd);background:rgba(255,255,255,.06);color:var(--ink);cursor:pointer}
+.keypad button:active{background:var(--pri2)}
+.shake{animation:shk .35s}
+@keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+</style></style>
+</head>
+<body>
+<div class="hero"><div>
+  <h1 id="title">สั่งจองของที่ระลึก</h1>
+  <div class="sub">ELECTRICAL NPT RAIKHING · แผนกวิชาช่างไฟฟ้ากำลัง</div>
+</div></div>
+<div id="cf" class="hide" style="position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px">
+  <div class="card" style="max-width:380px;width:100%;margin:0"><div id="cf-msg"></div>
+    <div class="row" style="margin-top:14px"><button class="btn sec" style="flex:1" onclick="cfNo()">ยกเลิก</button><button class="btn" style="flex:1" onclick="cfYes()">ยืนยัน</button></div></div></div>
+<div id="lb" onclick="this.style.display='none'"><button>✕</button><img id="lb-img" alt=""></div>
+<main>
+
+<!-- ========== ลูกค้า: สั่งจอง ========== -->
+<section id="v-shop">
+  <div id="closedBanner" class="banner hide"></div>
+  <div class="card goal"><b style="color:var(--gold)">จุดประสงค์การจัดทำ</b><div>รายได้จากการจำหน่ายทั้งหมด นำไปใช้เพื่อ <b>"บำรุงห้องเรียนแผนกวิชาช่างไฟฟ้ากำลัง"</b></div>
+    <div class="mut">ปรับปรุงอุปกรณ์การเรียน · ซ่อมแซมโต๊ะเก้าอี้ · ปรับปรุงระบบไฟฟ้า-แสงสว่าง · ดูแลสภาพแวดล้อม</div></div>
+  <div id="products" class="grid"><div class="mut">กำลังโหลด...</div></div>
+</section>
+
+<!-- ========== ลูกค้า: ตรวจสอบ ========== -->
+<section id="v-track" class="hide">
+  <div class="card">
+    <label>เบอร์โทรที่ใช้สั่ง</label>
+    <div class="row"><input id="tk-phone" inputmode="tel"><button class="btn" onclick="track()">ค้นหา</button></div>
+  </div>
+  <div id="tk-list"></div>
+</section>
+
+<!-- ========== แอดมิน ========== -->
+<section id="v-admin" class="hide">
+  <div id="ad-login" class="card" style="text-align:center">
+    <b style="font-size:18px">เข้าสู่ระบบแอดมิน</b>
+    <div class="mut">ใส่ PIN 6 หลัก</div>
+    <div class="dots" id="pin-dots"></div>
+    <div class="keypad">
+      <button onclick="pinKey('1')">1</button><button onclick="pinKey('2')">2</button><button onclick="pinKey('3')">3</button>
+      <button onclick="pinKey('4')">4</button><button onclick="pinKey('5')">5</button><button onclick="pinKey('6')">6</button>
+      <button onclick="pinKey('7')">7</button><button onclick="pinKey('8')">8</button><button onclick="pinKey('9')">9</button>
+      <button onclick="pinKey('c')" style="font-size:16px">ล้าง</button><button onclick="pinKey('0')">0</button><button onclick="pinKey('b')">⌫</button>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;justify-content:center;margin:6px 0 0"><input type="checkbox" id="pin-rem" style="width:20px;min-height:20px;margin:0"> จำ PIN ไว้ในเครื่องนี้ (ไม่ต้องใส่ครั้งต่อไป)</label>
+  </div>
+  <div id="ad-body" class="hide">
+    <div class="row" style="justify-content:flex-end;margin-bottom:8px"><button class="btn sec" onclick="adminLogout()">ออกจากระบบ</button></div>
+    <div class="stat" id="ad-stat"></div>
+    <div class="card">
+      <b>📦 สรุปจำนวนที่สั่ง</b>
+      <div class="row" style="margin-top:8px">
+        <select id="ad-sump" onchange="renderSummary()"></select>
+        <select id="ad-sumf" onchange="renderSummary()">
+          <option value="all">ทุกออเดอร์ (ไม่รวมยกเลิก)</option>
+          <option value="paid">เฉพาะที่ชำระแล้ว</option>
+        </select>
+      </div>
+      <div id="ad-sum"></div>
+    </div>
+    <div class="card">
+      <b>โหมดระบบ</b> <span class="mut">ปัจจุบัน: <b id="ad-modeLbl" style="color:var(--gold)"></b></span>
+      <div class="row" style="margin-top:8px"><select id="ad-mode">
+        <option value="survey">📋 สำรวจ</option><option value="pay">💳 เปิดชำระเงิน</option>
+        <option value="order">🛒 จองพร้อมจ่าย</option><option value="closed">⏸️ ปิดรับ</option></select>
+        <button class="btn" onclick="setMode()">เปลี่ยนโหมด</button></div>
+    </div>
+    <div class="card">
+      <b>ตั้งค่าร้าน</b>
+      <label>ชื่อหน้าร้าน (ต่อท้ายคำนำหน้าตามโหมด)</label><input id="st-title">
+      <label>ข้อมูลบัญชีรับโอน (แสดงให้ลูกค้าตอนชำระเงิน)</label><textarea id="st-pay" rows="3"></textarea>
+      <label>ค่าจัดส่ง (บาท / ออเดอร์)</label><input id="st-fee" type="number" inputmode="numeric">
+      <button class="btn full" onclick="saveSettings()">บันทึกการตั้งค่า</button>
+    </div>
+    <div class="card">
+      <b>สินค้า / ราคา / สต็อก</b>
+      <select id="ad-pp" onchange="renderProdEdit()" style="margin-top:8px"></select>
+      <div id="ad-prod"></div>
+      <div class="mut" style="margin-top:8px">เพิ่ม/แก้ชื่อสินค้าหรือตัวเลือก แก้ได้ตรงๆ ในชีต Products</div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;flex-wrap:wrap">
+        <b>ออเดอร์</b>
+        <div class="row">
+          <select id="ad-filter" onchange="renderOrders()"></select>
+          <button class="btn sec" onclick="exportCsv()">CSV</button>
+          <button class="btn sec" onclick="adminLoad()">รีเฟรช</button>
+        </div>
+      </div>
+      <input id="ad-q" placeholder="ค้นหาชื่อ / เบอร์ / เลขที่" oninput="renderOrders()" style="margin-top:8px">
+    </div>
+    <div id="ad-orders"></div>
+  </div>
+</section>
+  <div class="mut" style="text-align:center;margin:24px 0 0;font-size:12px">เวอร์ชัน <span id="ver"></span></div>
+</main>
+
+<div class="bar hide" id="cartBar">
+  <div><span style="opacity:.85;font-size:14px">ตะกร้า <span id="cnt">0</span> ชิ้น</span><br><b id="total">฿0</b></div>
+  <button class="btn" onclick="openSheet()">ดูตะกร้า / ส่งแบบฟอร์ม</button>
+</div>
+
+<div class="tabs">
+  <button id="t-shop" class="on" onclick="tab('shop')"><svg viewBox="0 0 24 24"><path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>สั่งจอง</button>
+  <button id="t-track" onclick="tab('track')"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>ตรวจสอบ</button>
+  <button id="t-admin" onclick="tab('admin')"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>แอดมิน</button>
+</div>
+
+<div id="sheet" onclick="if(event.target===this)closeSheet()"><div class="panel">
+  <div class="grab"></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px">ตะกร้าของคุณ</b><button class="btn sec" onclick="closeSheet()">ปิด</button></div>
+  <div id="cartList"></div>
+  <div class="row" style="justify-content:space-between;margin-top:8px"><span class="mut">รวม</span><b class="price" id="sheetTotal"></b></div>
+
+  <b style="display:block;margin-top:16px">ข้อมูลผู้สั่ง</b>
+  <label>ชื่อ-สกุล *</label><input id="f-name" autocomplete="name">
+  <label>เบอร์โทร *</label><input id="f-phone" inputmode="tel" autocomplete="tel">
+  <label>รุ่น (เช่น รุ่น 25 / ศิษย์เก่ารุ่น 10)</label><input id="f-group">
+  <label>หมายเหตุ</label><textarea id="f-note" rows="2"></textarea>
+
+  <div id="payCard" style="margin-top:14px">
+    <b>ชำระเงิน</b>
+    <pre id="payInfo" class="mut"></pre>
+    <label>แนบสลิปโอนเงิน (ไม่บังคับ แนบทีหลังได้)</label>
+    <input type="file" id="f-slip" accept="image/*">
+  </div>
+  <button class="btn full" id="btnSubmit" onclick="submit()">ยืนยันการจอง</button>
+</div></div>
+
+<script>
+var VER='7';
+// ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
+(function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
+  if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
+var shop = null, cart = {}, ADMIN = '', adm = null, STATUSES = [];
+function lb(src){$('lb-img').src=src;$('lb').style.display='block'}
+// รูปสำรองตาม id สินค้า (กรณีชีตไม่ได้ใส่รูป)
+var DEF={polo:['polo','polo'],shirt:['polo','polo'],tee:['tee','tee'],mug:['mug','mug'],ring:['ring','ring']};
+function imgOf(p){var d=DEF[p.id];return {img:p.image||(d?'img/'+d[0]+'.jpg':''),big:(p.poster&&p.poster!=='img/poster-shirt.jpg'?p.poster:'')||(d?'img/poster-'+d[1]+'.jpg':'')}}
+function priceTxt(p){return p.price>0?'฿'+p.price.toLocaleString():'ราคาแจ้งภายหลัง'}
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function toast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},3200)}
+// วาง URL ของ Cloudflare Worker (https://souvenir-api.<ชื่อ>.workers.dev) ตรงนี้
+var API_URL='https://souvenir-api.research-qnpt.workers.dev';
+function run(fn,args,ok,btn,fail){
+  if(btn)btn.disabled=true;
+  function done(){if(btn)btn.disabled=false}
+  function bad(m){done();if(fail)fail(m);else toast(m)}
+  if(API_URL.indexOf('PASTE')===0)return bad('ยังไม่ได้ตั้งค่า API_URL ใน index.html');
+  fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:args})})
+    .then(function(r){return r.json()})
+    .then(function(r){if(r.ok){done();ok(r.data)}else bad(String(r.error||'เกิดข้อผิดพลาด').replace(/^Error:\s*/,''))})
+    .catch(function(e){bad('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่')});
+}
+var curTab='shop';
+function tab(t){
+  curTab=t;
+  ['shop','track','admin'].forEach(function(x){$('v-'+x).classList.toggle('hide',x!==t);$('t-'+x).classList.toggle('on',x===t)});
+  cartVis();window.scrollTo(0,0);
+  if(t==='admin')autoAdmin();
+}
+function cartVis(){$('cartBar').classList.toggle('hide',!(curTab==='shop'&&cart.length>0))}
+
+/* ---------- ลูกค้า ---------- */
+function load(){
+  run('getShop',[],function(s){
+    shop=s; var PFX={survey:'แบบสำรวจ',pay:'ชำระเงิน',order:'',closed:'ปิดรับ'}, ttl=(PFX[s.mode]||'')+s.title; $('title').textContent=ttl; document.title=ttl;
+    $('payInfo').textContent=s.payInfo;
+    var m=s.mode, open=(m==='survey'||m==='order');
+    $('payCard').classList.toggle('hide',m!=='order');
+    $('closedBanner').classList.toggle('hide',open);
+    $('closedBanner').innerHTML=m==='pay'?'<b>เปิดชำระเงินแล้ว</b><br>ผู้ที่ลงชื่อไว้ เลือกวิธีรับสินค้า (รับเอง / จัดส่ง) และชำระเงินได้ที่หน้าตรวจสอบ<br><button class="btn" style="margin-top:8px" onclick="tab(\'track\')">ไปหน้าตรวจสอบและชำระเงิน</button>':'ปิดรับแล้ว';
+    $('products').classList.toggle('hide',!open);
+    $('btnSubmit').disabled=!open;
+    $('btnSubmit').textContent=m==='survey'?'ส่งแบบสำรวจ':'ยืนยันการจอง';
+    renderProducts();
+  });
+}
+function renderProducts(){
+  $('products').innerHTML=shop.products.map(function(p,i){
+    var im=imgOf(p);var img=im.img?'<div class="pimg'+(im.big?' zoom':'')+'"'+(im.big?' onclick="lb(\''+esc(im.big)+'\')"':'')+'><img src="'+esc(im.img)+'" alt="'+esc(p.name)+'"></div>':'<div class="pimg" style="font-size:56px">🎁</div>';
+    var opt='';
+    if(p.options.length){
+      var two=p.options.every(function(o){return o.indexOf(' / ')>0});
+      if(two){
+        var a=[],b=[];p.options.forEach(function(o){var s=o.split(' / ');if(a.indexOf(s[0])<0)a.push(s[0]);if(b.indexOf(s[1])<0)b.push(s[1])});
+        var ln=String(p.optionLabel).split(' / ');
+        var mk=function(id,l,arr){return '<div><label>'+esc(l||'')+'</label><select id="'+id+i+'">'+arr.map(function(o){return '<option>'+esc(o)+'</option>'}).join('')+'</select></div>'};
+        opt='<div class="sel2">'+mk('oa',ln[0],a)+mk('ob',ln[1],b)+'</div>';
+      }else opt='<label>'+esc(p.optionLabel)+'</label><select id="o'+i+'">'+
+        p.options.map(function(o){return '<option>'+esc(o)+'</option>'}).join('')+'</select>';
+    }
+    var guide=p.options.some(function(o){return o.indexOf('แผนก')>=0})?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="lb(\'img/ring-size-guide.jpg\')">วิธีวัดไซซ์แหวนด้วยตัวเอง</button>':'';
+    var low=shop.mode==='order'&&p.stock!=null&&!p.soldOut&&p.stock<=10?'<span class="tag bad">เหลือ '+p.stock+'</span>':'';
+    return '<div class="card p">'+img+'<div class="pb"><div class="row" style="justify-content:space-between;align-items:flex-start"><b class="pn">'+esc(p.name)+'</b>'+low+'</div>'+
+      '<div class="mut">'+esc(p.desc)+'</div><div class="price">'+priceTxt(p)+'</div>'+opt+guide+
+      (p.soldOut&&shop.mode==='order'?'<div class="tag bad" style="margin-top:12px">สินค้าหมด</div>':
+      '<div class="row" style="margin-top:12px"><div class="qty"><button onclick="chg('+i+',-1)">−</button><span id="q'+i+'">1</span><button onclick="chg('+i+',1)">+</button></div>'+
+      '<button class="btn" style="flex:1" onclick="addCart('+i+')">เพิ่มลงตะกร้า</button></div>')+
+      '</div></div>';
+  }).join('');
+}
+function optVal(i,p){
+  if(!p.options.length)return '';
+  if($('oa'+i))return $('oa'+i).value+' / '+$('ob'+i).value;
+  return $('o'+i).value;
+}
+var cart=[], loc={};
+function chg(i,d){loc[i]=Math.max(1,Math.min(50,(loc[i]||1)+d));$('q'+i).textContent=loc[i]}
+function addCart(i){
+  var p=shop.products[i],opt=optVal(i,p),q=loc[i]||1;
+  var ex=cart.filter(function(l){return l.i===i&&l.opt===opt})[0];
+  if(ex)ex.qty=Math.min(50,ex.qty+q);else cart.push({i:i,opt:opt,qty:q});
+  loc[i]=1;$('q'+i).textContent=1;upd();
+  toast('เพิ่ม '+p.name+(opt?' ('+opt+')':'')+' แล้ว');
+}
+function items(){return cart.map(function(l){return {id:shop.products[l.i].id,qty:l.qty,opt:l.opt,_p:shop.products[l.i]}})}
+function totalTxt(){
+  var t=0,tbd=false;items().forEach(function(x){t+=x._p.price*x.qty;if(!(x._p.price>0))tbd=true});
+  return tbd&&t===0?'ราคาแจ้งภายหลัง':'฿'+t.toLocaleString()+(tbd?' + รายการที่ยังไม่แจ้งราคา':'');
+}
+function upd(){
+  var c=0;cart.forEach(function(l){c+=l.qty});
+  $('cnt').textContent=c;$('total').textContent=totalTxt();cartVis();
+}
+function renderCart(){
+  $('cartList').innerHTML=items().map(function(x,k){
+    return '<div class="cl"><div style="flex:1;min-width:0"><b>'+esc(x._p.name)+'</b><div class="mut">'+esc(x.opt||'')+(x.opt?' · ':'')+priceTxt(x._p)+'</div></div>'+
+      '<div class="qty"><button onclick="cl('+k+',-1)">−</button><span>'+x.qty+'</span><button onclick="cl('+k+',1)">+</button></div>'+
+      '<button class="x" onclick="cl('+k+',0)">✕</button></div>';
+  }).join('');
+  $('sheetTotal').textContent=totalTxt();
+}
+function cl(k,d){
+  var l=cart[k];if(!l)return;
+  if(d===0)cart.splice(k,1);else{l.qty+=d;if(l.qty<1)cart.splice(k,1);else if(l.qty>50)l.qty=50}
+  upd();if(!cart.length)closeSheet();else renderCart();
+}
+function openSheet(){if(!cart.length)return;renderCart();$('sheet').classList.add('on');document.body.style.overflow='hidden'}
+function closeSheet(){$('sheet').classList.remove('on');document.body.style.overflow=''}
+function readSlip(cb){
+  var f=$('f-slip').files[0]; if(!f)return cb(null);
+  var img=new Image(), fr=new FileReader();
+  fr.onload=function(){img.onload=function(){
+    var m=1200,s=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    cb({base64:c.toDataURL('image/jpeg',.8).split(',')[1],mime:'image/jpeg'});
+  };img.src=fr.result};
+  fr.readAsDataURL(f);
+}
+function submit(){
+  var its=items(); if(!its.length)return toast('ยังไม่ได้เลือกสินค้า');
+  if(!$('f-name').value.trim())return toast('กรุณากรอกชื่อ-สกุล');
+  if($('f-phone').value.replace(/\D/g,'').length<9)return toast('กรุณากรอกเบอร์โทรให้ถูกต้อง');
+  readSlip(function(slip){
+    run('submitOrder',[{name:$('f-name').value,phone:$('f-phone').value,group:$('f-group').value,note:$('f-note').value,
+      items:its.map(function(x){return {id:x.id,qty:x.qty,opt:x.opt}}),slip:slip}],function(r){
+      cart=[];loc={};upd();closeSheet();renderProducts();$('f-slip').value='';
+      $('products').innerHTML='<div class="card" style="grid-column:1/-1;text-align:center"><div class="ok-ico">✓</div><h2 style="margin:6px 0">'+(r.survey?'บันทึกแบบสำรวจแล้ว':'จองสำเร็จ')+'</h2>'+
+        '<div>เลขที่ออเดอร์ <b>'+esc(r.orderNo)+'</b></div><pre>'+esc(r.lines.join('\n'))+'</pre>'+
+        '<div class="price">'+(r.total>0?'ยอดรวม ฿'+r.total.toLocaleString():'ราคาจะแจ้งภายหลัง')+'</div>'+
+        (r.survey?'<p class="mut"><b>ยังไม่ต้องโอนเงิน</b> — เมื่อสรุปยอดสำรวจแล้ว จะแจ้งให้ชำระเงิน โดยเข้าลิงก์นี้ แท็บ "ตรวจสอบ" แล้วใส่เบอร์โทร</p>':'<p class="mut">จดเลขที่ออเดอร์ไว้ ตรวจสอบสถานะได้ที่แท็บ "ตรวจสอบ" ด้วยเบอร์โทร</p>')+
+        '<button class="btn full" onclick="load()">สั่งเพิ่ม</button></div>';
+      window.scrollTo(0,0);
+    },$('btnSubmit'));
+  });
+}
+function track(){
+  run('trackOrders',[$('tk-phone').value],function(res){var l=res.orders;
+    $('tk-list').innerHTML=l.length?l.map(function(o,k){
+      var cls=o.status==='ยกเลิก'?'bad':(o.status==='ชำระแล้ว'||o.status==='พร้อมรับ'||o.status==='รับแล้ว'?'ok':'');
+      return '<div class="card"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="tag '+cls+'">'+esc(stLbl(o.status))+'</span></div>'+
+        '<div class="mut">'+esc(o.time)+'</div><pre>'+esc(o.items)+'</pre>'+(o.ringSize?'<div class="mut">ขนาดแหวน: '+esc(o.ringSize)+'</div>':'')+'<div class="price">'+payTxt(o)+'</div>'+dlvBlock(o,k,res.shipFee)+
+        (o.status==='สำรวจ'?'<div class="mut">อยู่ระหว่างสำรวจ ยังไม่ต้องชำระเงิน</div><button class="btn sec" onclick="cancelMine(\''+o.orderNo+'\')">ยกเลิกรายการนี้</button>':'')+
+        (o.status==='รอชำระเงิน'&&!o.hasSlip?'<pre class="mut"><b>โอนเงินที่:</b>\n'+esc(res.payInfo)+'</pre>':'')+
+        (o.hasSlip?'<div class="mut">✔ แนบสลิปแล้ว</div>':
+         (o.status==='รอชำระเงิน'?'<label>แนบสลิป</label><input type="file" accept="image/*" onchange="sendSlip(this,\''+o.orderNo+'\')">':''))+'</div>';
+    }).join(''):'<div class="card mut">ไม่พบออเดอร์</div>';
+  });
+}
+function payTxt(o){
+  var t=Number(o.total),f=Number(o.fee)||0;
+  if(!(t>0))return 'ราคาแจ้งภายหลัง'+(f?' + ค่าจัดส่ง ฿'+f:'');
+  return '฿'+(t+f).toLocaleString()+(f?' <span class="mut">(สินค้า ฿'+t.toLocaleString()+' + ค่าจัดส่ง ฿'+f+')</span>':'');
+}
+function dlvBlock(o,k,fee){
+  var ship=o.delivery==='จัดส่ง';
+  if(['รอชำระเงิน','ชำระแล้ว'].indexOf(o.status)<0)
+    return o.delivery?'<div class="mut">การรับสินค้า: '+esc(o.delivery)+(ship?' · '+esc(o.addr)+' · โทร '+esc(o.dphone):'')+'</div>':'';
+  return '<div style="margin-top:10px;padding:12px;border:1px solid var(--bd);border-radius:14px"><b>การรับสินค้า</b>'+
+    '<select id="dm'+k+'" onchange="dmChg('+k+')" style="margin-top:6px"><option value="รับด้วยตนเอง"'+(ship?'':' selected')+'>รับด้วยตนเอง (ที่แผนก)</option>'+
+    '<option value="จัดส่ง"'+(ship?' selected':'')+'>จัดส่ง (ค่าบริการ ฿'+fee+')</option></select>'+
+    '<div id="dx'+k+'" class="'+(ship?'':'hide')+'"><label>ที่อยู่จัดส่ง *</label><textarea id="da'+k+'" rows="3">'+esc(o.addr)+'</textarea>'+
+    '<label>เบอร์โทรสำหรับจัดส่ง *</label><input id="dp'+k+'" inputmode="tel" value="'+esc(o.dphone||$('tk-phone').value)+'">'+
+    '<div class="mut" style="margin-top:6px">ยอดที่ต้องโอนรวมค่าจัดส่ง ฿'+fee+' แล้ว</div></div>'+
+    '<button class="btn sec" style="width:100%;margin-top:10px" onclick="saveDlv('+k+',\''+o.orderNo+'\')">บันทึกการรับสินค้า</button>'+
+    '<div class="mut" style="margin-top:6px">'+(o.delivery?'บันทึกแล้ว: '+esc(o.delivery):'ยังไม่ได้เลือก (ถ้าไม่เลือก ถือว่ารับด้วยตนเอง)')+'</div></div>';
+}
+function dmChg(k){$('dx'+k).classList.toggle('hide',$('dm'+k).value!=='จัดส่ง')}
+function saveDlv(k,no){
+  run('setDelivery',[no,$('tk-phone').value,{method:$('dm'+k).value,addr:$('da'+k)?$('da'+k).value:'',phone:$('dp'+k)?$('dp'+k).value:''}],
+    function(r){toast(r.method==='จัดส่ง'?'บันทึกแล้ว — โอนรวมค่าจัดส่ง ฿'+r.fee:'บันทึกแล้ว — รับด้วยตนเอง');track()});
+}
+var cfCb=null;
+function askConfirm(msg,cb){$('cf-msg').textContent=msg;cfCb=cb;$('cf').classList.remove('hide')}
+function cfNo(){$('cf').classList.add('hide');cfCb=null}
+function cfYes(){var f=cfCb;cfNo();if(f)f()}
+function cancelMine(no){askConfirm('ยืนยันยกเลิกรายการนี้?',function(){run('cancelMyOrder',[no,$('tk-phone').value],function(){toast('ยกเลิกแล้ว');track()})})}
+function sendSlip(inp,no){
+  var f=inp.files[0]; if(!f)return; var fr=new FileReader(), img=new Image();
+  fr.onload=function(){img.onload=function(){
+    var s=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    run('attachSlip',[no,$('tk-phone').value,{base64:c.toDataURL('image/jpeg',.8).split(',')[1],mime:'image/jpeg'}],function(){toast('ส่งสลิปแล้ว');track()});
+  };img.src=fr.result};fr.readAsDataURL(f);
+}
+
+/* ---------- แอดมิน ---------- */
+var pin='';
+function pinDraw(){$('pin-dots').innerHTML=[0,1,2,3,4,5].map(function(i){return '<span class="'+(i<pin.length?'f':'')+'"></span>'}).join('')}
+function pinKey(k){
+  if(k==='c')pin='';else if(k==='b')pin=pin.slice(0,-1);else if(pin.length<6)pin+=k;
+  pinDraw();
+  if(pin.length===6)adminLogin(pin,false);
+}
+function adminLogin(p,auto){
+  run('adminLogin',[p],function(r){
+    ADMIN=p;STATUSES=r.statuses;
+    if(!auto&&$('pin-rem').checked){try{localStorage.setItem('sv_pin',p)}catch(e){}}
+    $('ad-login').classList.add('hide');$('ad-body').classList.remove('hide');
+    $('ad-filter').innerHTML='<option value="">ทุกสถานะ</option>'+STATUSES.map(function(s){return '<option value="'+s+'">'+stLbl(s)+'</option>'}).join('');
+    adminLoad();
+  },null,function(m){
+    if(auto){try{localStorage.removeItem('sv_pin')}catch(e){}}
+    else{toast(m);var d=$('pin-dots');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake')}
+    pin='';pinDraw();
+  });
+}
+function autoAdmin(){
+  if(ADMIN)return;
+  try{var p=localStorage.getItem('sv_pin');if(p)adminLogin(p,true)}catch(e){}
+}
+function adminLogout(){
+  try{localStorage.removeItem('sv_pin')}catch(e){}
+  ADMIN='';adm=null;pin='';pinDraw();
+  $('ad-body').classList.add('hide');$('ad-login').classList.remove('hide');
+}
+document.addEventListener('keydown',function(e){
+  if(curTab!=='admin'||$('ad-login').classList.contains('hide'))return;
+  if(/^\d$/.test(e.key))pinKey(e.key);else if(e.key==='Backspace')pinKey('b');
+});
+function adminLoad(){run('adminGetData',[ADMIN],function(d){adm=d;renderAdmin()})}
+var PAID=['ชำระแล้ว','กำลังผลิต','พร้อมรับ','รับแล้ว'];
+function sortNum(a,b){return a.localeCompare(b,'th',{numeric:true})}
+function renderSummary(){
+  var only=$('ad-sumf').value==='paid', view=$('ad-sump').value||'all';
+  var ords=adm.orders.filter(function(o){return o.status!=='ยกเลิก'&&(!only||PAID.indexOf(o.status)>=0)});
+  var cnt={}, grp={}, amt={}, qtyBy={}, tot={qty:0,amt:0};
+  ords.forEach(function(o){
+    var items=[];try{items=JSON.parse(o.json)}catch(e){}
+    var g=String(o.group||'').trim()||'(ไม่ระบุรุ่น)';
+    items.forEach(function(i){
+      var k=i.id+'|'+(i.opt||'');
+      cnt[k]=(cnt[k]||0)+i.qty; tot.qty+=i.qty; tot.amt+=i.qty*i.price;
+      qtyBy[i.id]=(qtyBy[i.id]||0)+i.qty; amt[i.id]=(amt[i.id]||0)+i.qty*i.price;
+      grp[g]=grp[g]||{}; grp[g][i.name]=(grp[g][i.name]||0)+i.qty;
+    });
+  });
+  // แหวน
+  var rNeed=0,rSizes={},rDone=0;
+  ords.forEach(function(o){
+    ringItems(o).forEach(function(i){
+      rNeed+=i.qty;
+      if(!isDept(i.opt)){rSizes[i.opt]=(rSizes[i.opt]||0)+i.qty;rDone+=i.qty}
+    });
+    String(o.ringSize||'').split(/[,\s]+/).filter(String).forEach(function(s){rSizes[s]=(rSizes[s]||0)+1;rDone++});
+  });
+  var ringTag='<span class="tag">'+rNeed+' วง · วัดแล้ว '+Math.min(rDone,rNeed)+' · ยังไม่วัด '+Math.max(rNeed-rDone,0)+'</span>';
+  var html='';
+  if(view==='all'){
+    html+='<div style="overflow-x:auto"><table><tr><th>สินค้า</th><th style="text-align:right">ชิ้น</th><th style="text-align:right">มูลค่า</th></tr>'+
+      adm.products.map(function(p){return '<tr><td>'+esc(p.name)+'</td><td style="text-align:right;font-weight:700">'+(qtyBy[p.id]||0)+'</td><td style="text-align:right">฿'+(amt[p.id]||0).toLocaleString()+'</td></tr>'}).join('')+
+      '<tr><td><b>รวม</b></td><td style="text-align:right"><b>'+tot.qty+'</b></td><td style="text-align:right"><b>฿'+tot.amt.toLocaleString()+'</b></td></tr></table></div>';
+    if(rNeed>0)html+='<div style="margin-top:8px"><b>แหวน</b> '+ringTag+'</div>';
+    html+='<div class="mut" style="margin-top:8px">เลือกสินค้าในช่องด้านบนเพื่อดูรายละเอียดสี / ไซซ์</div>';
+  }else if(view==='group'){
+    var gk=Object.keys(grp).sort(sortNum);
+    html+=gk.length?'<div style="overflow-x:auto"><table><tr><th>รุ่น</th>'+adm.products.map(function(p){return '<th style="text-align:right">'+esc(p.name)+'</th>'}).join('')+'</tr>'+
+      gk.map(function(g){return '<tr><td>'+esc(g)+'</td>'+adm.products.map(function(p){return '<td style="text-align:right">'+(grp[g][p.name]||0)+'</td>'}).join('')+'</tr>'}).join('')+'</table></div>':'<div class="mut">ยังไม่มีข้อมูล</div>';
+  }else{
+    var p=adm.products.filter(function(x){return x.id===view})[0];
+    if(p){
+      html+='<div class="row" style="justify-content:space-between;margin:10px 0 4px"><b>'+esc(p.name)+'</b><span class="tag">รวม '+(qtyBy[p.id]||0)+' ชิ้น · ฿'+(amt[p.id]||0).toLocaleString()+'</span></div>';
+      var two=p.options.length&&p.options.every(function(o){return o.indexOf(' / ')>0});
+      if(two){
+        var cols=[],rows=[];p.options.forEach(function(o){var s=o.split(' / ');if(cols.indexOf(s[0])<0)cols.push(s[0]);if(rows.indexOf(s[1])<0)rows.push(s[1])});
+        html+='<div style="overflow-x:auto"><table><tr><th>'+esc(String(p.optionLabel).split(' / ')[1]||'ไซซ์')+'</th>'+cols.map(function(c){return '<th style="text-align:right">'+esc(c)+'</th>'}).join('')+'<th style="text-align:right">รวม</th></tr>'+
+          rows.map(function(rw){var sum=0;var tds=cols.map(function(c){var n=cnt[p.id+'|'+c+' / '+rw]||0;sum+=n;return '<td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td>'}).join('');
+            return '<tr><td>'+esc(rw)+'</td>'+tds+'<td style="text-align:right;font-weight:700">'+sum+'</td></tr>'}).join('')+'</table></div>';
+      }else if(p.id==='ring'){
+        html+=ringTag;
+        var rk=Object.keys(rSizes).sort(sortNum);
+        html+=rk.length?'<table><tr><th>ขนาด</th><th style="text-align:right">จำนวน</th></tr>'+rk.map(function(k){return '<tr><td>'+esc(k)+'</td><td style="text-align:right;font-weight:700">'+rSizes[k]+'</td></tr>'}).join('')+'</table>':'<div class="mut">ยังไม่มีการเลือกหรือบันทึกขนาด</div>';
+      }else if(p.options.length){
+        html+='<table><tr><th>'+esc(p.optionLabel)+'</th><th style="text-align:right">จำนวน</th></tr>'+p.options.map(function(o){var n=cnt[p.id+'|'+o]||0;return '<tr><td>'+esc(o)+'</td><td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td></tr>'}).join('')+'</table>';
+      }else html+='<div class="mut">สินค้านี้ไม่มีตัวเลือก</div>';
+    }
+  }
+  $('ad-sum').innerHTML=html;
+}
+function renderAdmin(){
+  var live=adm.orders.filter(function(o){return o.status!=='ยกเลิก'});
+  var sum=live.reduce(function(a,o){return a+Number(o.total)},0);
+  var paid=live.filter(function(o){return PAID.indexOf(o.status)>=0}).reduce(function(a,o){return a+Number(o.total)},0);
+  $('ad-stat').innerHTML='<div><b>'+live.length+'</b>ออเดอร์</div><div><b>฿'+sum.toLocaleString()+'</b>ยอดรวม</div><div><b>฿'+paid.toLocaleString()+'</b>ชำระแล้ว</div>'+
+    '<div><b>'+live.filter(function(o){return o.delivery==='จัดส่ง'}).length+'</b>ออเดอร์จัดส่ง</div><div><b>฿'+live.reduce(function(a,o){return a+(Number(o.fee)||0)},0).toLocaleString()+'</b>ค่าจัดส่งรวม</div>';
+  var sp=$('ad-sump'),cur=sp.value||'all';
+  sp.innerHTML='<option value="all">ภาพรวมทุกสินค้า</option>'+adm.products.map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'}).join('')+'<option value="group">แยกตามรุ่น</option>';
+  sp.value=cur;if(sp.value!==cur)sp.value='all';
+  renderSummary();
+  $('ad-mode').value=adm.mode;
+  if(adm.settings){$('st-title').value=adm.settings.title;$('st-pay').value=adm.settings.payInfo;$('st-fee').value=adm.settings.shipFee}
+  $('ad-modeLbl').textContent=MODE_LBL[adm.mode]||adm.mode;
+  var pp=$('ad-pp'),pcur=pp.value;
+  pp.innerHTML=adm.products.map(function(p){return '<option value="'+p.row+'">'+esc(p.name)+'</option>'}).join('');
+  if(pcur)pp.value=pcur;
+  renderProdEdit();
+  renderOrders();
+}
+function renderOrders(){
+  if(!adm)return; var f=$('ad-filter').value,q=$('ad-q').value.trim().toLowerCase();
+  var l=adm.orders.filter(function(o){return (!f||o.status===f)&&(!q||(o.orderNo+o.name+o.phone).toLowerCase().indexOf(q)>=0)});
+  $('ad-orders').innerHTML=l.map(function(o){
+    return '<div class="card"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="mut">'+esc(o.time)+'</span></div>'+
+      '<div>'+esc(o.name)+' · '+esc(o.phone)+(o.group?' · '+esc(o.group):'')+'</div><pre>'+esc(o.items)+'</pre>'+
+      (ringDeptQty(o)>0?'<div class="row" style="margin:6px 0"><span>ขนาดที่วัดจริง ('+ringDeptQty(o)+' วง)</span><input id="rs'+esc(o.orderNo)+'" value="'+esc(o.ringSize||'')+'" placeholder="เช่น 56 หรือ 56, 58" style="flex:1;min-width:0"><button class="btn sec" onclick="saveRing(\''+o.orderNo+'\')">บันทึก</button></div>':'')+
+      (o.delivery?'<div class="mut">'+(o.delivery==='จัดส่ง'?'จัดส่ง +฿'+o.fee+' · '+esc(o.addr)+' · โทร '+esc(o.dphone):'รับด้วยตนเอง')+'</div>':'')+
+      (o.note?'<div class="mut">หมายเหตุ: '+esc(o.note)+'</div>':'')+
+      '<div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-top:6px"><span class="price">฿'+Number(o.total).toLocaleString()+'</span>'+
+      (o.slip?'<a href="'+esc(o.slip)+'" target="_blank">ดูสลิป</a>':'<span class="mut">ยังไม่มีสลิป</span>')+
+      '<select style="width:auto" onchange="setStatus(\''+o.orderNo+'\',this.value)">'+STATUSES.map(function(s){return '<option value="'+s+'"'+(s===o.status?' selected':'')+'>'+stLbl(s)+'</option>'}).join('')+'</select></div></div>';
+  }).join('')||'<div class="card mut">ไม่มีออเดอร์</div>';
+}
+var MODE_LBL={survey:'📋 สำรวจ',pay:'💳 เปิดชำระเงิน',order:'🛒 จองพร้อมจ่าย',closed:'⏸️ ปิดรับ'};
+var ST_ICON={'สำรวจ':'📋','รอชำระเงิน':'⏳','ชำระแล้ว':'✅','กำลังผลิต':'🛠️','พร้อมรับ':'📦','รับแล้ว':'🎉','ยกเลิก':'❌'};
+function stLbl(s){return (ST_ICON[s]?ST_ICON[s]+' ':'')+s}
+function saveSettings(){
+  run('adminSetSettings',[ADMIN,{title:$('st-title').value,payInfo:$('st-pay').value,shipFee:$('st-fee').value}],function(){toast('บันทึกการตั้งค่าแล้ว');adminLoad();load()});
+}
+function renderProdEdit(){
+  var row=$('ad-pp').value,p=adm.products.filter(function(x){return String(x.row)===String(row)})[0];
+  if(!p){$('ad-prod').innerHTML='';return}
+  $('ad-prod').innerHTML='<div class="sel2"><div><label>ราคา (บาท)</label><input id="pp'+p.row+'" type="number" value="'+p.price+'"></div>'+
+    '<div><label>สต็อก (ว่าง = ไม่จำกัด)</label><input id="ps'+p.row+'" type="number" value="'+(p.stock==null?'':p.stock)+'" placeholder="∞"></div></div>'+
+    '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="pa'+p.row+'" type="checkbox" '+(p.active?'checked':'')+' style="width:22px;min-height:22px;margin:0"> เปิดขาย</label>'+
+    '<button class="btn full" onclick="saveProd('+p.row+')">บันทึก</button>';
+}
+function ringItems(o){try{return JSON.parse(o.json).filter(function(i){return i.id==='ring'})}catch(e){return []}}
+function isDept(opt){return !opt||String(opt).indexOf('แผนก')>=0}
+function ringDeptQty(o){return ringItems(o).filter(function(i){return isDept(i.opt)}).reduce(function(a,i){return a+i.qty},0)}
+function saveRing(no){run('adminSetRingSize',[ADMIN,no,$('rs'+no).value],function(){toast('บันทึกขนาดแหวนแล้ว');adminLoad()})}
+function setStatus(no,s){run('adminSetStatus',[ADMIN,no,s],function(){toast('อัปเดตแล้ว');adminLoad()})}
+function saveProd(row){
+  run('adminSaveProduct',[ADMIN,row,{price:$('pp'+row).value,stock:$('ps'+row).value,active:$('pa'+row).checked}],function(){toast('บันทึกแล้ว');adminLoad();load()});
+}
+function setMode(){
+  var m=$('ad-mode').value;
+  if(m===adm.mode)return toast('อยู่ในโหมดนี้อยู่แล้ว');
+  var go=function(){run('adminSetMode',[ADMIN,m],function(r){
+    toast(r.converted?'เปิดชำระเงินแล้ว ('+r.converted+' ออเดอร์เปลี่ยนเป็นรอชำระเงิน)':'เปลี่ยนเป็นโหมด "'+MODE_LBL[m]+'" แล้ว');adminLoad();load()})};
+  if(m==='pay')askConfirm('ปิดรับสำรวจ และเปลี่ยนทุกรายการ "สำรวจ" เป็น "รอชำระเงิน" ใช่หรือไม่?',go);else go();
+}
+function exportCsv(){
+  var rows=[['เลขที่','เวลา','ชื่อ','เบอร์','รุ่น','รายการ','ยอด','สถานะ','หมายเหตุ','ขนาดแหวน','การรับสินค้า','ค่าจัดส่ง','ที่อยู่จัดส่ง','เบอร์จัดส่ง']].concat(adm.orders.map(function(o){
+    return [o.orderNo,o.time,o.name,o.phone,o.group,o.items.replace(/\n/g,'; '),o.total,o.status,o.note,o.ringSize||'',o.delivery||'',o.fee||0,(o.addr||'').replace(/\n/g,' '),o.dphone||'']}));
+  var csv='﻿'+rows.map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='orders.csv';a.click();
+}
+$('ver').textContent=VER;pinDraw();
+load();
+</script>
+</body>
+</html>
