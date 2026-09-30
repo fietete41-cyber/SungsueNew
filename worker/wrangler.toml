@@ -14,7 +14,7 @@ database_id = "769bd911-1eb8-4e94-b8a7-377126364753"
 # --- ตัวแปรปกติ (ไม่ลับ) ---
 [vars]
 # URL /exec ของ Apps Script ตัวจิ๋วที่ทำหน้าที่เก็บสลิปลง Google Drive
-APPS_SCRIPT_URL = "PUT_APPS_SCRIPT_EXEC_URL_HERE"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxCNZC7scEO06JzBkkbnEDEvp_c9lj6A2cnuqxr9JoBV8aY1AVt8Flln6ZI2rn20wIc/exec"
 
 # --- ค่าลับ ตั้งด้วยคำสั่ง (อย่าใส่ในไฟล์นี้) ---
 #   npx wrangler secret put ADMIN_PASS   -> PIN แอดมิน 6 หลัก
