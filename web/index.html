@@ -101,7 +101,15 @@ a{color:#8db4ff}
 .fab{position:fixed;right:14px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:16;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .fab.up{bottom:calc(150px + env(safe-area-inset-bottom))}
 .fab-btn{width:56px;height:56px;border-radius:50%;border:0;background:linear-gradient(135deg,#f5b82e,#e59a0c);color:#231a00;box-shadow:0 8px 22px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center}
-.fab-btn svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.fab-btn{position:relative}
+.fab-btn svg.ic{width:36px;height:36px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+.fab-btn svg.ic-x{display:none;width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round}
+.fab-btn:before{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid #f5b82e;animation:fabpulse 2.6s ease-out infinite;pointer-events:none}
+@keyframes fabpulse{0%{transform:scale(1);opacity:.75}100%{transform:scale(1.55);opacity:0}}
+.fab.open .fab-btn:before{animation:none;opacity:0}
+.fab.open .fab-btn svg.ic{display:none}
+.fab.open .fab-btn svg.ic-x{display:block}
+@media(prefers-reduced-motion:reduce){.fab-btn:before{animation:none;opacity:0}}
 .fab-menu{background:#0a1430;border:1px solid var(--bd);border-radius:16px;padding:8px;box-shadow:0 10px 28px rgba(0,0,0,.5);animation:up .2s ease;min-width:230px}
 .fab-menu button{display:flex;gap:10px;align-items:center;width:100%;background:none;border:0;color:var(--ink);font:inherit;padding:12px;border-radius:12px;cursor:pointer;text-align:left}
 .fab-menu button:active,.fab-menu button:hover{background:var(--pri2)}
@@ -229,7 +237,12 @@ a{color:#8db4ff}
     <button onclick="openReport('problem')"><span>🛠️</span><span>แจ้งปัญหาการใช้งาน</span></button>
     <button onclick="openReport('contact')"><span>💬</span><span>ติดต่อแอดมิน</span></button>
   </div>
-  <button class="fab-btn" onclick="toggleFab()" aria-label="แจ้งปัญหา / ติดต่อแอดมิน"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4.5"/></svg></button>
+  <button class="fab-btn" onclick="toggleFab()" aria-label="แจ้งปัญหา / ติดต่อแอดมิน"><svg class="ic" viewBox="0 0 32 32" aria-hidden="true">
+      <defs><linearGradient id="fabg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#12245a"/><stop offset="1" stop-color="#050b1a"/></linearGradient></defs>
+      <path d="M7 4h18a4 4 0 0 1 4 4v11a4 4 0 0 1-4 4H16.5L10 28.5V23H7a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4z" fill="url(#fabg)"/>
+      <path d="M17.6 7.5 10.5 16.2h4.4l-1.6 6.3 7.3-9h-4.5z" fill="#f5b82e"/>
+    </svg>
+    <svg class="ic-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
 
 <div id="rp" onclick="if(event.target===this)closeReport()"><div class="panel">
@@ -272,7 +285,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='11';
+var VER='12';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -521,11 +534,12 @@ document.addEventListener('keydown',function(e){
 function adminLoad(){run('adminGetData',[ADMIN],function(d){adm=d;renderAdmin();loadReports()})}
 /* ---------- แจ้งปัญหา ---------- */
 var rpKind='problem';
-function toggleFab(){$('fab-menu').classList.toggle('hide')}
-document.addEventListener('click',function(e){var f=$('fab');if(f&&!f.contains(e.target))$('fab-menu').classList.add('hide')});
+function toggleFab(){var m=$('fab-menu');m.classList.toggle('hide');$('fab').classList.toggle('open',!m.classList.contains('hide'))}
+function closeFab(){$('fab-menu').classList.add('hide');$('fab').classList.remove('open')}
+document.addEventListener('click',function(e){var f=$('fab');if(f&&!f.contains(e.target))closeFab()});
 function openReport(kind){
   rpKind=kind==='contact'?'contact':'problem';
-  $('fab-menu').classList.add('hide');
+  closeFab();
   $('rp-title').textContent=rpKind==='contact'?'ติดต่อแอดมิน':'แจ้งปัญหาการใช้งาน';
   $('rp-lbl').textContent=rpKind==='contact'?'ข้อความถึงแอดมิน *':'ปัญหาที่พบ *';
   $('rp-btn').textContent=rpKind==='contact'?'ส่งข้อความหาแอดมิน':'ส่งเรื่องให้แอดมิน';
