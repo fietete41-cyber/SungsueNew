@@ -328,7 +328,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='21';
+var VER='22';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -707,6 +707,52 @@ function visProducts(){
   adm.orders.forEach(function(o){if(o.status==='ยกเลิก')return;try{JSON.parse(o.json).forEach(function(i){used[i.id]=1})}catch(e){}});
   return adm.products.filter(function(p){return p.active||used[p.id]});
 }
+/* ---------- ของที่ต้องเตรียมรวม: แตกเซ็ตเป็นชิ้นส่วน (เสื้อ / แก้ว / หมวก / พวงกุญแจ) ---------- */
+function normCol(s){return String(s||'').replace(/^(กล่อง|แก้ว|หมวก)/,'').trim()}
+function componentsOf(it){
+  var p=String(it.opt||'').split(' / '),q=it.qty,out=[];
+  if(it.id==='polo')out.push({k:'poloShirt',color:normCol(p[0]),size:p[1],q:q,src:'solo'});
+  else if(it.id==='tee')out.push({k:'teeShirt',color:normCol(p[0]),size:p[1],q:q,src:'solo'});
+  else if(it.id==='mug')out.push({k:'mug',color:normCol(p[0]),q:q,src:'solo'});
+  else if(it.id==='cap')out.push({k:'cap',color:normCol(p[0]),q:q,src:'solo'});
+  else if(it.id==='keychain')out.push({k:'keychain',design:p[0],q:q,src:'solo'});
+  else if(it.id==='set-polo'||it.id==='set-tee'){
+    var box=normCol(p[0]),mug=p[2]?normCol(p[2]):box,cap=p[3]?normCol(p[3]):box;
+    out.push({k:it.id==='set-polo'?'poloShirt':'teeShirt',color:box,size:p[1],q:q,src:'set'});
+    out.push({k:'mug',color:mug,q:q,src:'set'});
+    if(it.id==='set-polo')out.push({k:'cap',color:cap,q:q,src:'set'});
+    out.push({k:'keychain',design:'แถมในเซ็ต',q:q,src:'set'});
+  }
+  return out;
+}
+function prepHtml(ords){
+  var A={poloShirt:{},teeShirt:{},mug:{},cap:{},keychain:{}},T={};
+  ['poloShirt','teeShirt','mug','cap','keychain'].forEach(function(k){T[k]={all:0,solo:0,set:0}});
+  ords.forEach(function(o){var items=[];try{items=JSON.parse(o.json)}catch(e){}
+    items.forEach(function(it){componentsOf(it).forEach(function(c){
+      var key=c.k==='keychain'?c.design:(c.size?c.color+'|'+c.size:c.color);
+      A[c.k][key]=(A[c.k][key]||0)+c.q;T[c.k].all+=c.q;T[c.k][c.src]+=c.q})})});
+  function uniq(list,pref){var s=pref.slice();list.forEach(function(x){if(x&&s.indexOf(x)<0)s.push(x)});return s}
+  function head(title,unit,k){var t=T[k];return '<div class="row" style="justify-content:space-between;margin:14px 0 4px"><b>'+title+'</b><span class="tag">รวม '+t.all+' '+unit+(t.set?' (เดี่ยว '+t.solo+' + ในเซ็ต '+t.set+')':'')+'</span></div>'}
+  function shirt(k,title){
+    var keys=Object.keys(A[k]),cols=uniq(keys.map(function(x){return x.split('|')[0]}),['ขาว','ดำ']),rows=uniq(keys.map(function(x){return x.split('|')[1]}),SZ_SIZES);
+    var sumC={};
+    var body=rows.map(function(s){var sum=0;return '<tr><td>'+esc(s)+'</td>'+cols.map(function(c){var n=A[k][c+'|'+s]||0;sum+=n;sumC[c]=(sumC[c]||0)+n;return '<td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td>'}).join('')+'<td style="text-align:right;font-weight:700">'+sum+'</td></tr>'}).join('');
+    return head(title,'ตัว',k)+'<div style="overflow-x:auto"><table><tr><th>ไซร์ส</th>'+cols.map(function(c){return '<th style="text-align:right">'+esc(c)+'</th>'}).join('')+'<th style="text-align:right">รวม</th></tr>'+body+
+      '<tr><td><b>รวม</b></td>'+cols.map(function(c){return '<td style="text-align:right"><b>'+(sumC[c]||0)+'</b></td>'}).join('')+'<td style="text-align:right"><b>'+T[k].all+'</b></td></tr></table></div>';
+  }
+  function colorTable(k,title,unit){
+    var cols=uniq(Object.keys(A[k]),['ขาว','ดำ']);
+    return head(title,unit,k)+'<table>'+cols.map(function(c){var n=A[k][c]||0;return '<tr><td>สี'+esc(c)+'</td><td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td></tr>'}).join('')+'</table>';
+  }
+  function keychainTable(){
+    var rows=uniq(Object.keys(A.keychain),['แถมในเซ็ต']);
+    return head('พวงกุญแจเปิดขวด (แถมกับเซ็ต)','ชิ้น','keychain')+'<table>'+rows.map(function(d){var n=A.keychain[d]||0;return '<tr><td>'+esc(d)+'</td><td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td></tr>'}).join('')+'</table>';
+  }
+  return '<div class="mut" style="margin-top:8px">แตกของในเซ็ตเป็นชิ้น (เสื้อ แก้ว หมวก พวงกุญแจ) แล้วรวมกับที่สั่งเดี่ยว เพื่อใช้สั่งผลิต — ไม่นับออเดอร์ที่ยกเลิก ตามตัวกรองด้านบน</div>'+
+    shirt('poloShirt','เสื้อโปโล (รวมในเซ็ตโปโล)')+shirt('teeShirt','เสื้อยืด (รวมในเซ็ตเสื้อยืด)')+
+    colorTable('mug','แก้วเก็บความเย็น (รวมในเซ็ตทุกแบบ)','ใบ')+colorTable('cap','หมวกแก๊ป (รวมในเซ็ตโปโล)','ใบ')+keychainTable();
+}
 function sortNum(a,b){return a.localeCompare(b,'th',{numeric:true})}
 function renderSummary(){
   var prods=visProducts(),only=$('ad-sumf').value==='paid', view=$('ad-sump').value||'all';
@@ -733,7 +779,7 @@ function renderSummary(){
   });
   var ringTag='<span class="tag">'+rNeed+' วง · วัดแล้ว '+Math.min(rDone,rNeed)+' · ยังไม่วัด '+Math.max(rNeed-rDone,0)+'</span>';
   var html='';
-  if(view==='all'){
+  if(view==='prep'){html=prepHtml(ords)}else if(view==='all'){
     html+='<div style="overflow-x:auto"><table><tr><th>สินค้า</th><th style="text-align:right">ชิ้น</th><th style="text-align:right">มูลค่า</th></tr>'+
       prods.map(function(p){return '<tr><td>'+esc(p.name)+'</td><td style="text-align:right;font-weight:700">'+(qtyBy[p.id]||0)+'</td><td style="text-align:right">฿'+(amt[p.id]||0).toLocaleString()+'</td></tr>'}).join('')+
       '<tr><td><b>รวม</b></td><td style="text-align:right"><b>'+tot.qty+'</b></td><td style="text-align:right"><b>฿'+tot.amt.toLocaleString()+'</b></td></tr></table></div>';
@@ -783,7 +829,7 @@ function renderAdmin(){
   $('ad-stat').innerHTML='<div><b>'+live.length+'</b>ออเดอร์</div><div><b>฿'+sum.toLocaleString()+'</b>ยอดรวม</div><div><b>฿'+paid.toLocaleString()+'</b>ชำระแล้ว</div>'+
     '<div><b>'+live.filter(function(o){return o.delivery==='จัดส่ง'}).length+'</b>ออเดอร์จัดส่ง</div><div><b>฿'+live.reduce(function(a,o){return a+(Number(o.fee)||0)},0).toLocaleString()+'</b>ค่าจัดส่งรวม</div>';
   var sp=$('ad-sump'),cur=sp.value||'all';
-  sp.innerHTML='<option value="all">ภาพรวมทุกสินค้า</option>'+visProducts().map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'}).join('')+'<option value="group">แยกตามรุ่น</option>';
+  sp.innerHTML='<option value="all">ภาพรวมทุกสินค้า</option><option value="prep">ของที่ต้องเตรียมรวม</option>'+visProducts().map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'}).join('')+'<option value="group">แยกตามรุ่น</option>';
   sp.value=cur;if(sp.value!==cur)sp.value='all';
   renderSummary();
   $('ad-mode').value=adm.mode;
