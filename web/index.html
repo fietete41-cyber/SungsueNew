@@ -303,7 +303,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='13';
+var VER='14';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -602,9 +602,14 @@ function setReport(id,st){run('adminSetReportStatus',[ADMIN,id,st],function(){lo
 function delReport(id){askConfirm('ลบเรื่องนี้ใช่หรือไม่?',function(){run('adminDeleteReport',[ADMIN,id],function(){loadReports()})})}
 setInterval(function(){if(ADMIN)loadReports()},60000);
 var PAID=['ชำระแล้ว','กำลังผลิต','พร้อมรับ','รับแล้ว'];
+function visProducts(){
+  var used={};
+  adm.orders.forEach(function(o){if(o.status==='ยกเลิก')return;try{JSON.parse(o.json).forEach(function(i){used[i.id]=1})}catch(e){}});
+  return adm.products.filter(function(p){return p.active||used[p.id]});
+}
 function sortNum(a,b){return a.localeCompare(b,'th',{numeric:true})}
 function renderSummary(){
-  var only=$('ad-sumf').value==='paid', view=$('ad-sump').value||'all';
+  var prods=visProducts(),only=$('ad-sumf').value==='paid', view=$('ad-sump').value||'all';
   var ords=adm.orders.filter(function(o){return o.status!=='ยกเลิก'&&(!only||PAID.indexOf(o.status)>=0)});
   var cnt={}, grp={}, amt={}, qtyBy={}, tot={qty:0,amt:0};
   ords.forEach(function(o){
@@ -630,14 +635,14 @@ function renderSummary(){
   var html='';
   if(view==='all'){
     html+='<div style="overflow-x:auto"><table><tr><th>สินค้า</th><th style="text-align:right">ชิ้น</th><th style="text-align:right">มูลค่า</th></tr>'+
-      adm.products.map(function(p){return '<tr><td>'+esc(p.name)+'</td><td style="text-align:right;font-weight:700">'+(qtyBy[p.id]||0)+'</td><td style="text-align:right">฿'+(amt[p.id]||0).toLocaleString()+'</td></tr>'}).join('')+
+      prods.map(function(p){return '<tr><td>'+esc(p.name)+'</td><td style="text-align:right;font-weight:700">'+(qtyBy[p.id]||0)+'</td><td style="text-align:right">฿'+(amt[p.id]||0).toLocaleString()+'</td></tr>'}).join('')+
       '<tr><td><b>รวม</b></td><td style="text-align:right"><b>'+tot.qty+'</b></td><td style="text-align:right"><b>฿'+tot.amt.toLocaleString()+'</b></td></tr></table></div>';
     if(rNeed>0)html+='<div style="margin-top:8px"><b>แหวน</b> '+ringTag+'</div>';
     html+='<div class="mut" style="margin-top:8px">เลือกสินค้าในช่องด้านบนเพื่อดูรายละเอียดสี / ไซซ์</div>';
   }else if(view==='group'){
     var gk=Object.keys(grp).sort(sortNum);
-    html+=gk.length?'<div style="overflow-x:auto"><table><tr><th>รุ่น</th>'+adm.products.map(function(p){return '<th style="text-align:right">'+esc(p.name)+'</th>'}).join('')+'</tr>'+
-      gk.map(function(g){return '<tr><td>'+esc(g)+'</td>'+adm.products.map(function(p){return '<td style="text-align:right">'+(grp[g][p.name]||0)+'</td>'}).join('')+'</tr>'}).join('')+'</table></div>':'<div class="mut">ยังไม่มีข้อมูล</div>';
+    html+=gk.length?'<div style="overflow-x:auto"><table><tr><th>รุ่น</th>'+prods.map(function(p){return '<th style="text-align:right">'+esc(p.name)+'</th>'}).join('')+'</tr>'+
+      gk.map(function(g){return '<tr><td>'+esc(g)+'</td>'+prods.map(function(p){return '<td style="text-align:right">'+(grp[g][p.name]||0)+'</td>'}).join('')+'</tr>'}).join('')+'</table></div>':'<div class="mut">ยังไม่มีข้อมูล</div>';
   }else{
     var p=adm.products.filter(function(x){return x.id===view})[0];
     if(p){
@@ -666,7 +671,7 @@ function renderAdmin(){
   $('ad-stat').innerHTML='<div><b>'+live.length+'</b>ออเดอร์</div><div><b>฿'+sum.toLocaleString()+'</b>ยอดรวม</div><div><b>฿'+paid.toLocaleString()+'</b>ชำระแล้ว</div>'+
     '<div><b>'+live.filter(function(o){return o.delivery==='จัดส่ง'}).length+'</b>ออเดอร์จัดส่ง</div><div><b>฿'+live.reduce(function(a,o){return a+(Number(o.fee)||0)},0).toLocaleString()+'</b>ค่าจัดส่งรวม</div>';
   var sp=$('ad-sump'),cur=sp.value||'all';
-  sp.innerHTML='<option value="all">ภาพรวมทุกสินค้า</option>'+adm.products.map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'}).join('')+'<option value="group">แยกตามรุ่น</option>';
+  sp.innerHTML='<option value="all">ภาพรวมทุกสินค้า</option>'+visProducts().map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>'}).join('')+'<option value="group">แยกตามรุ่น</option>';
   sp.value=cur;if(sp.value!==cur)sp.value='all';
   renderSummary();
   $('ad-mode').value=adm.mode;
@@ -678,7 +683,7 @@ function renderAdmin(){
     $('st-acc').value=adm.settings.bankAccount||'';$('st-tel').value=adm.settings.contactPhone||'';$('st-holder').value=adm.settings.bankHolder||''}
   $('ad-modeLbl').textContent=MODE_LBL[adm.mode]||adm.mode;
   var pp=$('ad-pp'),pcur=pp.value;
-  pp.innerHTML=adm.products.map(function(p){return '<option value="'+p.row+'">'+esc(p.name)+'</option>'}).join('');
+  pp.innerHTML=adm.products.map(function(p){return '<option value="'+p.row+'">'+(p.active?'':'🚫 ')+esc(p.name)+(p.active?'':' (ซ่อนอยู่)')+'</option>'}).join('');
   if(pcur)pp.value=pcur;
   renderProdEdit();
   renderOrders();
@@ -709,16 +714,21 @@ function renderProdEdit(){
   if(!p){$('ad-prod').innerHTML='';return}
   $('ad-prod').innerHTML='<div class="sel2"><div><label>ราคา (บาท)</label><input id="pp'+p.row+'" type="number" value="'+p.price+'"></div>'+
     '<div><label>สต็อก (ว่าง = ไม่จำกัด)</label><input id="ps'+p.row+'" type="number" value="'+(p.stock==null?'':p.stock)+'" placeholder="∞"></div></div>'+
-    '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="pa'+p.row+'" type="checkbox" '+(p.active?'checked':'')+' style="width:22px;min-height:22px;margin:0"> เปิดขาย</label>'+
-    '<button class="btn full" onclick="saveProd('+p.row+')">บันทึก</button>';
+    '<button class="btn full" onclick="saveProd('+p.row+')">บันทึกราคา / สต็อก</button>'+
+    '<div class="row" style="justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--bd)"><div><b>การแสดงในหน้าสั่งจอง</b><div class="mut">'+(p.active?'ลูกค้าเห็นสินค้านี้อยู่':'ซ่อนอยู่ ลูกค้าไม่เห็น (ออเดอร์เดิมยังอยู่ครบ)')+'</div></div>'+
+    '<span class="tag '+(p.active?'ok':'bad')+'">'+(p.active?'แสดงอยู่':'ซ่อนอยู่')+'</span></div>'+
+    '<button class="btn sec" style="width:100%;margin-top:10px" onclick="toggleActive('+p.row+','+(p.active?0:1)+')">'+(p.active?'🚫 ซ่อนสินค้านี้จากหน้าสั่งจอง':'👁️ แสดงสินค้านี้ในหน้าสั่งจอง')+'</button>';
 }
 function ringItems(o){try{return JSON.parse(o.json).filter(function(i){return i.id==='ring'})}catch(e){return []}}
 function isDept(opt){return !opt||String(opt).indexOf('แผนก')>=0}
 function ringDeptQty(o){return ringItems(o).filter(function(i){return isDept(i.opt)}).reduce(function(a,i){return a+i.qty},0)}
 function saveRing(no){run('adminSetRingSize',[ADMIN,no,$('rs'+no).value],function(){toast('บันทึกขนาดแหวนแล้ว');adminLoad()})}
 function setStatus(no,s){run('adminSetStatus',[ADMIN,no,s],function(){toast('อัปเดตแล้ว');adminLoad()})}
+function toggleActive(row,on){
+  run('adminSaveProduct',[ADMIN,row,{active:!!on}],function(){toast(on?'แสดงสินค้าในหน้าสั่งจองแล้ว':'ซ่อนสินค้าจากหน้าสั่งจองแล้ว');adminLoad();load()});
+}
 function saveProd(row){
-  run('adminSaveProduct',[ADMIN,row,{price:$('pp'+row).value,stock:$('ps'+row).value,active:$('pa'+row).checked}],function(){toast('บันทึกแล้ว');adminLoad();load()});
+  run('adminSaveProduct',[ADMIN,row,{price:$('pp'+row).value,stock:$('ps'+row).value}],function(){toast('บันทึกแล้ว');adminLoad();load()});
 }
 function setMode(){
   var m=$('ad-mode').value;
