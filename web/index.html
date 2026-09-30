@@ -205,7 +205,7 @@ a{color:#8db4ff}
       <label>ชื่อบัญชี</label><input id="st-holder">
       <label>หมายเหตุการโอน (ไม่บังคับ)</label><textarea id="st-pay" rows="2" placeholder="เช่น โอนแล้วแนบสลิปภายใน 3 วัน"></textarea>
       <label>เบอร์โทรแอดมิน (แสดงในปุ่ม "ติดต่อแอดมิน" ให้ลูกค้ากดโทรได้)</label><input id="st-tel" inputmode="tel" placeholder="เช่น 08x-xxx-xxxx">
-      <label>ค่าเพิ่มไซซ์ใหญ่ 4XL / 5XL / 6XL (บาท / ตัว — ใช้กับสินค้าที่มีเสื้อทุกประเภท, 0 = ไม่คิด)</label><input id="st-big" type="number" inputmode="numeric">
+      <label>ค่าเพิ่มไซซ์ใหญ่ 3XL / 4XL / 5XL / 6XL (บาท / ตัว — ใช้กับสินค้าที่มีเสื้อทุกประเภท, 0 = ไม่คิด)</label><input id="st-big" type="number" inputmode="numeric">
       <label>ค่าจัดส่ง (บาท / ออเดอร์)</label><input id="st-fee" type="number" inputmode="numeric">
       <button class="btn full" onclick="saveSettings()">บันทึกการตั้งค่า</button>
     </div>
@@ -304,7 +304,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='15';
+var VER='16';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -314,7 +314,7 @@ function lb(src){$('lb-img').src=src;$('lb').style.display='block'}
 var DEF={polo:['polo','polo'],shirt:['polo','polo'],tee:['tee','tee'],mug:['mug','mug'],ring:['ring','ring']};
 function imgOf(p){var d=DEF[p.id];return {img:p.image||(d?'img/'+d[0]+'.jpg':''),big:(p.poster&&p.poster!=='img/poster-shirt.jpg'?p.poster:'')||(d?'img/poster-'+d[1]+'.jpg':'')}}
 var bigFee=0;
-function bigOpt(opt){var sz=String(opt||'').split(' / ')[1];sz=sz?sz.trim().toUpperCase():'';return ['4XL','5XL','6XL'].indexOf(sz)>=0}
+function bigOpt(opt){var sz=String(opt||'').split(' / ')[1];sz=sz?sz.trim().toUpperCase():'';return ['3XL','4XL','5XL','6XL'].indexOf(sz)>=0}
 function unitPrice(p,opt){return p.price>0?p.price+(bigFee>0&&bigOpt(opt)?bigFee:0):0}
 function unitTxt(p,opt){return p.price>0?'฿'+unitPrice(p,opt).toLocaleString()+(unitPrice(p,opt)>p.price?' (ไซซ์ใหญ่ +฿'+bigFee+')':''):'ราคาแจ้งภายหลัง'}
 function hasBig(p){return p.options.some(function(o){return bigOpt(o)})}
@@ -376,7 +376,7 @@ function renderProducts(){
     var guide=p.options.some(function(o){return o.indexOf('แผนก')>=0})?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="lb(\'img/ring-size-guide.jpg\')">วิธีวัดไซซ์แหวนด้วยตัวเอง</button>':'';
     var low=shop.mode==='order'&&p.stock!=null&&!p.soldOut&&p.stock<=10?'<span class="tag bad">เหลือ '+p.stock+'</span>':'';
     return '<div class="card p">'+img+'<div class="pb"><div class="row" style="justify-content:space-between;align-items:flex-start"><b class="pn">'+esc(p.name)+'</b>'+low+'</div>'+
-      '<div class="mut">'+esc(p.desc)+'</div><div class="price" id="pr'+i+'">'+priceTxt(p)+'</div>'+(bigFee>0&&hasBig(p)?'<div class="mut" style="font-size:12px">ไซซ์ 4XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว</div>':'')+opt+guide+
+      '<div class="mut">'+esc(p.desc)+'</div><div class="price" id="pr'+i+'">'+priceTxt(p)+'</div>'+(bigFee>0&&hasBig(p)?'<div class="mut" style="font-size:12px">ไซซ์ 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว</div>':'')+opt+guide+
       (p.soldOut&&shop.mode==='order'?'<div class="tag bad" style="margin-top:12px">สินค้าหมด</div>':
       '<div class="row" style="margin-top:12px"><div class="qty"><button onclick="chg('+i+',-1)">−</button><span id="q'+i+'">1</span><button onclick="chg('+i+',1)">+</button></div>'+
       '<button class="btn" style="flex:1" onclick="addCart('+i+')">เพิ่มลงตะกร้า</button></div>')+

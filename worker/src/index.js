@@ -16,8 +16,8 @@ const CORS = {
 };
 const STATUSES = ['สำรวจ', 'รอชำระเงิน', 'ชำระแล้ว', 'กำลังผลิต', 'พร้อมรับ', 'รับแล้ว', 'ยกเลิก'];
 const MODES = ['survey', 'pay', 'order', 'closed'];
-// ไซซ์ใหญ่ (4XL ขึ้นไป) บวกเพิ่มต่อตัว — ใช้กับทุกสินค้าที่มีตัวเลือกไซซ์เหล่านี้ (เสื้อ / เซ็ตที่มีเสื้อ)
-const BIG_SIZES = ['4XL', '5XL', '6XL'];
+// ไซซ์ใหญ่ (3XL ขึ้นไป) บวกเพิ่มต่อตัว — ใช้กับทุกสินค้าที่มีตัวเลือกไซซ์เหล่านี้ (เสื้อ / เซ็ตที่มีเสื้อ)
+const BIG_SIZES = ['3XL', '4XL', '5XL', '6XL'];
 function sizeOf(opt) { const s = String(opt || '').split(' / ')[1]; return s ? s.trim().toUpperCase() : ''; }
 const isBig = (opt) => BIG_SIZES.includes(sizeOf(opt));
 const unitPrice = (p, opt, fee) => (p.price > 0 ? p.price + (fee > 0 && isBig(opt) ? fee : 0) : 0);
