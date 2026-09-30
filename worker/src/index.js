@@ -79,6 +79,34 @@ async function bankInfo(env) {
   };
 }
 
+/* เปลี่ยนตัวเลือกของสินค้า 1 รายการในออเดอร์ (เช่น สีแก้ว/หมวกในเซ็ต) แล้วคำนวณยอดใหม่ */
+async function changeItemOption(env, o, idx, opt, lockTotal) {
+  let items = [];
+  try { items = JSON.parse(o.items_json); } catch (e) { items = []; }
+  const it = items[idx];
+  if (!it) fail('ไม่พบรายการสินค้า');
+  const products = await readProducts(env);
+  const byId = {};
+  products.forEach((p) => { byId[p.id] = p; });
+  const p = byId[it.id];
+  if (!p || !p.options.length) fail('สินค้านี้แก้ตัวเลือกไม่ได้');
+  if (p.options.indexOf(opt) < 0) fail('ตัวเลือกไม่ถูกต้อง');
+  const bigFee = Number(await setting(env, 'BIG_SIZE_FEE', '50')) || 0;
+  items[idx] = { ...it, opt, price: unitPrice(p, opt, bigFee) };
+  let total = 0;
+  const lines = [];
+  items.forEach((x) => {
+    const q = byId[x.id];
+    const unit = Number(x.price) || 0;
+    total += unit * x.qty;
+    lines.push(q ? lineText(q, x.opt, x.qty, q.price > 0 && unit > q.price ? unit - q.price : 0) : x.name + ' x' + x.qty);
+  });
+  if (lockTotal && total !== o.total) fail('ตัวเลือกนี้ทำให้ราคาเปลี่ยน (ออเดอร์ชำระเงินแล้ว) กรุณาติดต่อแอดมิน');
+  await env.DB.prepare('UPDATE orders SET items_json = ?, items_text = ?, total = ? WHERE order_no = ?')
+    .bind(JSON.stringify(items), lines.join('\n'), total, o.order_no).run();
+  return { total, line: lines[idx] };
+}
+
 async function uploadSlip(env, orderNo, slip) {
   if (!env.APPS_SCRIPT_URL || env.APPS_SCRIPT_URL.startsWith('PUT_')) fail('ยังไม่ได้ตั้งค่าที่เก็บสลิป');
   const body = new URLSearchParams({
@@ -207,11 +235,19 @@ const API = {
         orderNo: r.order_no, time: fmtLong(r.created_at), items: r.items_text, total: r.total, status: r.status,
         hasSlip: !!r.slip_url, ringSize: r.ring_size || '', delivery: r.delivery || '', fee: r.fee || 0,
         addr: r.addr || '', dphone: r.dphone || '',
+        lines: (() => { try { return JSON.parse(r.items_json).map((i) => ({ id: i.id, opt: i.opt, qty: i.qty })); } catch (e) { return []; } })(),
       })),
       payInfo: await setting(env, 'PAY_INFO', ''),
       bank: await bankInfo(env),
       shipFee: Number(await setting(env, 'SHIP_FEE', '50')) || 0,
     };
+  },
+
+  async editMyOrderItem(env, orderNo, phone, idx, opt) {
+    const o = await env.DB.prepare('SELECT * FROM orders WHERE order_no = ? AND phone = ?').bind(orderNo, digits(phone)).first();
+    if (!o) fail('ไม่พบออเดอร์');
+    if (!['สำรวจ', 'รอชำระเงิน', 'ชำระแล้ว'].includes(o.status)) fail('แก้ไขไม่ได้แล้ว เพราะออเดอร์อยู่ในขั้นตอนผลิตหรือเสร็จสิ้น กรุณาติดต่อแอดมิน');
+    return changeItemOption(env, o, Number(idx), opt, o.status === 'ชำระแล้ว');
   },
 
   async cancelMyOrder(env, orderNo, phone) {
@@ -378,6 +414,13 @@ const API = {
     }
     await setSetting(env, 'MODE', mode);
     return { converted };
+  },
+
+  async adminEditOrderItem(env, pass, orderNo, idx, opt) {
+    checkAdmin(env, pass);
+    const o = await env.DB.prepare('SELECT * FROM orders WHERE order_no = ?').bind(orderNo).first();
+    if (!o) fail('ไม่พบออเดอร์');
+    return changeItemOption(env, o, Number(idx), opt, false);
   },
 
   async adminSetRingSize(env, pass, orderNo, size) {

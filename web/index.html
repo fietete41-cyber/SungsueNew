@@ -79,10 +79,10 @@ a{color:#8db4ff}
   .bar{bottom:96px}
 }
 /* แผ่นล่าง (ตะกร้า + ข้อมูลผู้สั่ง) */
-#sheet,#pm,#rp{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
-#sheet.on,#pm.on,#rp.on{display:flex}
+#sheet,#pm,#rp,#ed{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
+#sheet.on,#pm.on,#rp.on,#ed.on{display:flex}
 .panel{background:#0a1430;border:1px solid var(--bd);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:93vh;overflow:auto;padding:12px 16px calc(18px + env(safe-area-inset-bottom));animation:up .25s ease}
-@media(min-width:700px){#sheet,#pm,#rp{align-items:center}.panel{border-radius:22px}}
+@media(min-width:700px){#sheet,#pm,#rp,#ed{align-items:center}.panel{border-radius:22px}}
 @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 .grab{width:44px;height:4px;background:var(--bd);border-radius:9px;margin:0 auto 10px}
 .cl{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)}
@@ -126,6 +126,7 @@ a{color:#8db4ff}
 @media(min-width:700px){.fab{right:24px;bottom:24px}.fab.up{bottom:160px}}
 .rp-item{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-top:10px}
 .rp-item.new{border-color:var(--gold);background:rgba(245,184,46,.07)}
+.sel-n{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .bankbox{background:rgba(255,255,255,.06);border:1px solid var(--bd);border-radius:16px;padding:14px;text-align:center;margin:10px 0}
 .acc{font-size:26px;font-weight:700;color:var(--gold);letter-spacing:1px;margin:2px 0 6px;word-break:break-all}
 </style></style>
@@ -264,6 +265,12 @@ a{color:#8db4ff}
     <svg class="ic-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
 
+<div id="ed" onclick="if(event.target===this)closeEdit()"><div class="panel">
+  <div class="grab"></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px">แก้ไขตัวเลือกสินค้า</b><button class="btn sec" onclick="closeEdit()">ปิด</button></div>
+  <div id="ed-body"></div>
+</div></div>
+
 <div id="rp" onclick="if(event.target===this)closeReport()"><div class="panel">
   <div class="grab"></div>
   <div class="row" style="justify-content:space-between"><b style="font-size:18px" id="rp-title">แจ้งปัญหาการใช้งาน</b><button class="btn sec" onclick="closeReport()">ปิด</button></div>
@@ -304,7 +311,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='16';
+var VER='17';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -362,17 +369,7 @@ function load(){
 function renderProducts(){
   $('products').innerHTML=shop.products.map(function(p,i){
     var im=imgOf(p);var img=im.img?'<div class="pimg'+(im.big?' zoom':'')+'"'+(im.big?' onclick="lb(\''+esc(im.big)+'\')"':'')+'><img src="'+esc(im.img)+'" alt="'+esc(p.name)+'"></div>':'<div class="pimg" style="font-size:56px">🎁</div>';
-    var opt='';
-    if(p.options.length){
-      var two=p.options.every(function(o){return o.indexOf(' / ')>0});
-      if(two){
-        var a=[],b=[];p.options.forEach(function(o){var s=o.split(' / ');if(a.indexOf(s[0])<0)a.push(s[0]);if(b.indexOf(s[1])<0)b.push(s[1])});
-        var ln=String(p.optionLabel).split(' / ');
-        var mk=function(id,l,arr){return '<div><label>'+esc(l||'')+'</label><select id="'+id+i+'" onchange="prc('+i+')">'+arr.map(function(o){return '<option>'+esc(o)+'</option>'}).join('')+'</select></div>'};
-        opt='<div class="sel2">'+mk('oa',ln[0],a)+mk('ob',ln[1],b)+'</div>';
-      }else opt='<label>'+esc(p.optionLabel)+'</label><select id="o'+i+'">'+
-        p.options.map(function(o){return '<option>'+esc(o)+'</option>'}).join('')+'</select>';
-    }
+    var opt=optHtml(p,'o'+i+'_',null,'prc('+i+')');
     var guide=p.options.some(function(o){return o.indexOf('แผนก')>=0})?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="lb(\'img/ring-size-guide.jpg\')">วิธีวัดไซซ์แหวนด้วยตัวเอง</button>':'';
     var low=shop.mode==='order'&&p.stock!=null&&!p.soldOut&&p.stock<=10?'<span class="tag bad">เหลือ '+p.stock+'</span>':'';
     return '<div class="card p">'+img+'<div class="pb"><div class="row" style="justify-content:space-between;align-items:flex-start"><b class="pn">'+esc(p.name)+'</b>'+low+'</div>'+
@@ -383,10 +380,34 @@ function renderProducts(){
       '</div></div>';
   }).join('');
 }
-function optVal(i,p){
+function optParts(p){return p.options.map(function(o){return o.split(' / ')})}
+function optDims(p){var ps=optParts(p);if(!ps.length)return 0;var n=ps[0].length;return n>=2&&ps.every(function(x){return x.length===n})?n:1}
+function optHtml(p,pfx,cur,onch){
   if(!p.options.length)return '';
-  if($('oa'+i))return $('oa'+i).value+' / '+$('ob'+i).value;
-  return $('o'+i).value;
+  var n=optDims(p),oc=onch?' onchange="'+onch+'"':'';
+  if(n<2)return '<label>'+esc(p.optionLabel)+'</label><select id="'+pfx+'0"'+oc+'>'+p.options.map(function(o){return '<option'+(o===cur?' selected':'')+'>'+esc(o)+'</option>'}).join('')+'</select>';
+  var lb=String(p.optionLabel).split(' / '),ps=optParts(p),cp=cur?String(cur).split(' / '):[],h2='<div class="sel-n">';
+  for(var k=0;k<n;k++){
+    var vals=[];ps.forEach(function(x){if(vals.indexOf(x[k])<0)vals.push(x[k])});
+    h2+='<div><label>'+esc(lb[k]||'')+'</label><select id="'+pfx+k+'"'+oc+'>'+vals.map(function(v){return '<option'+(cp[k]===v?' selected':'')+'>'+esc(v)+'</option>'}).join('')+'</select></div>';
+  }
+  return h2+'</div>';
+}
+function readOpt(p,pfx){
+  if(!p.options.length)return '';
+  var n=optDims(p);if(n<2)return $(pfx+'0').value;
+  var o=[];for(var k=0;k<n;k++)o.push($(pfx+k).value);return o.join(' / ');
+}
+function optVal(i,p){return readOpt(p,'o'+i+'_')}
+// ออเดอร์เก่าที่บันทึกตัวเลือกแบบเดิม (เช่น "ดำ / M") -> จับคู่กับตัวเลือกใหม่ที่ใกล้เคียงที่สุด
+function curFor(p,cur){
+  if(p.options.indexOf(cur)>=0)return cur;
+  var c=String(cur||'').split(' / '),best=p.options[0],bs=-1;
+  p.options.forEach(function(o){var q=o.split(' / '),s=0;
+    if(q[1]&&c[1]&&q[1]===c[1])s+=5;
+    q.forEach(function(x,k){if(k!==1&&c[0]&&x.indexOf(c[0])>=0)s+=1});
+    if(s>bs){bs=s;best=o}});
+  return best;
 }
 var cart=[], loc={};
 function chg(i,d){loc[i]=Math.max(1,Math.min(50,(loc[i]||1)+d));$('q'+i).textContent=loc[i]}
@@ -453,7 +474,7 @@ function track(){
     $('tk-list').innerHTML=l.length?l.map(function(o,k){
       var cls=o.status==='ยกเลิก'?'bad':(o.status==='ชำระแล้ว'||o.status==='พร้อมรับ'||o.status==='รับแล้ว'?'ok':'');
       return '<div class="card"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="tag '+cls+'">'+esc(stLbl(o.status))+'</span></div>'+
-        '<div class="mut">'+esc(o.time)+'</div><pre>'+esc(o.items)+'</pre>'+(o.ringSize?'<div class="mut">ขนาดแหวน: '+esc(o.ringSize)+'</div>':'')+'<div class="price">'+payTxt(o)+'</div>'+dlvBlock(o,k,res.shipFee)+
+        '<div class="mut">'+esc(o.time)+'</div>'+itemsHtml(o,'cust')+''+(o.ringSize?'<div class="mut">ขนาดแหวน: '+esc(o.ringSize)+'</div>':'')+'<div class="price">'+payTxt(o)+'</div>'+dlvBlock(o,k,res.shipFee)+
         (o.status==='สำรวจ'?'<div class="mut">อยู่ระหว่างสำรวจ ยังไม่ต้องชำระเงิน</div><button class="btn sec" onclick="cancelMine(\''+o.orderNo+'\')">ยกเลิกรายการนี้</button>':'')+
         (o.hasSlip?'<div class="mut" style="margin-top:8px">✔ แนบสลิปแล้ว รอแอดมินตรวจสอบ</div>':'')+
         (o.status==='รอชำระเงิน'?'<button class="btn full" onclick="openPay('+k+')">'+(o.hasSlip?'ดูบัญชี / ส่งสลิปใหม่':'ชำระเงิน')+'</button>':'')+'</div>';
@@ -485,6 +506,35 @@ function openPay(k){
   $('pm').classList.add('on');document.body.style.overflow='hidden';
 }
 function closePay(){$('pm').classList.remove('on');document.body.style.overflow=''}
+var ordCache={},edCtx=null;
+function prodById(id){var l=(typeof shop!=='undefined'&&shop?shop.products:[]).concat(typeof adm!=='undefined'&&adm?adm.products:[]);for(var k=0;k<l.length;k++)if(l[k].id===id)return l[k];return null}
+function itemsHtml(o,who){
+  var items=[];
+  if(who==='admin'){try{items=JSON.parse(o.json)}catch(e){}}else items=o.lines||[];
+  ordCache[who+o.orderNo]={items:items,status:o.status};
+  var ok=who==='admin'?o.status!=='ยกเลิก':['สำรวจ','รอชำระเงิน','ชำระแล้ว'].indexOf(o.status)>=0;
+  return String(o.items).split('\n').map(function(t,j){
+    var it=items[j],p=it&&prodById(it.id),can=ok&&p&&p.options.length;
+    return '<div class="row" style="justify-content:space-between;align-items:flex-start;margin:4px 0"><span style="flex:1;min-width:0">'+esc(t)+'</span>'+
+      (can?'<button class="btn sec" style="padding:6px 12px;min-height:0;font-size:13px" onclick="openEdit(\''+who+'\',\''+esc(o.orderNo)+'\','+j+')">แก้ไข</button>':'')+'</div>';
+  }).join('');
+}
+function openEdit(who,orderNo,j){
+  var c=ordCache[who+orderNo];if(!c)return;
+  var it=c.items[j],p=prodById(it.id);if(!p)return toast('แก้ไขสินค้านี้ไม่ได้');
+  edCtx={who:who,orderNo:orderNo,j:j,p:p};
+  var note=who==='cust'&&c.status==='ชำระแล้ว'?'ออเดอร์ชำระเงินแล้ว เปลี่ยนได้เฉพาะตัวเลือกที่ไม่ทำให้ราคาเปลี่ยน':(bigFee>0&&hasBig(p)?'ไซซ์ 3XL ขึ้นไป บวกเพิ่ม ฿'+bigFee+' / ตัว ยอดรวมจะคำนวณใหม่ให้อัตโนมัติ':'ยอดรวมจะคำนวณใหม่ให้อัตโนมัติ');
+  $('ed-body').innerHTML='<div style="margin:8px 0"><b>'+esc(p.name)+'</b><div class="mut">ออเดอร์ '+esc(orderNo)+'</div></div>'+
+    optHtml(p,'ed_',curFor(p,it.opt),null)+'<div class="mut" style="margin-top:10px">'+note+'</div>'+
+    '<button class="btn full" id="ed-btn" onclick="saveEdit()">บันทึกการแก้ไข</button>';
+  $('ed').classList.add('on');document.body.style.overflow='hidden';
+}
+function closeEdit(){$('ed').classList.remove('on');document.body.style.overflow=''}
+function saveEdit(){
+  if(!edCtx)return;var c=edCtx,opt=readOpt(c.p,'ed_');
+  var fn=c.who==='admin'?'adminEditOrderItem':'editMyOrderItem',args=c.who==='admin'?[ADMIN,c.orderNo,c.j,opt]:[c.orderNo,$('tk-phone').value,c.j,opt];
+  run(fn,args,function(res){toast('แก้ไขแล้ว ยอดรวมใหม่ ฿'+Number(res.total).toLocaleString());closeEdit();if(c.who==='admin')adminLoad();else track()},$('ed-btn'));
+}
 function payTxt(o){
   var t=Number(o.total),f=Number(o.fee)||0;
   if(!(t>0))return 'ราคาแจ้งภายหลัง'+(f?' + ค่าจัดส่ง ฿'+f:'');
@@ -654,12 +704,24 @@ function renderSummary(){
     var p=adm.products.filter(function(x){return x.id===view})[0];
     if(p){
       html+='<div class="row" style="justify-content:space-between;margin:10px 0 4px"><b>'+esc(p.name)+'</b><span class="tag">รวม '+(qtyBy[p.id]||0)+' ชิ้น · ฿'+(amt[p.id]||0).toLocaleString()+'</span></div>';
-      var two=p.options.length&&p.options.every(function(o){return o.indexOf(' / ')>0});
-      if(two){
-        var cols=[],rows=[];p.options.forEach(function(o){var s=o.split(' / ');if(cols.indexOf(s[0])<0)cols.push(s[0]);if(rows.indexOf(s[1])<0)rows.push(s[1])});
-        html+='<div style="overflow-x:auto"><table><tr><th>'+esc(String(p.optionLabel).split(' / ')[1]||'ไซซ์')+'</th>'+cols.map(function(c){return '<th style="text-align:right">'+esc(c)+'</th>'}).join('')+'<th style="text-align:right">รวม</th></tr>'+
-          rows.map(function(rw){var sum=0;var tds=cols.map(function(c){var n=cnt[p.id+'|'+c+' / '+rw]||0;sum+=n;return '<td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td>'}).join('');
+      var dims=optDims(p);
+      if(dims>=2){
+        var ps2=optParts(p),lb=String(p.optionLabel).split(' / ');
+        var cols=[],rows=[];ps2.forEach(function(s){if(cols.indexOf(s[0])<0)cols.push(s[0]);if(rows.indexOf(s[1])<0)rows.push(s[1])});
+        var mat={},extra={};
+        Object.keys(cnt).forEach(function(key){
+          var sp=key.split('|');if(sp[0]!==p.id)return;
+          var q=sp.slice(1).join('|').split(' / ');
+          mat[q[0]+'|'+q[1]]=(mat[q[0]+'|'+q[1]]||0)+cnt[key];
+          for(var k=2;k<dims;k++){extra[k]=extra[k]||{};extra[k][q[k]]=(extra[k][q[k]]||0)+cnt[key]}
+        });
+        html+='<div style="overflow-x:auto"><table><tr><th>'+esc(lb[1]||'ไซซ์')+'</th>'+cols.map(function(c){return '<th style="text-align:right">'+esc(c)+'</th>'}).join('')+'<th style="text-align:right">รวม</th></tr>'+
+          rows.map(function(rw){var sum=0;var tds=cols.map(function(c){var n=mat[c+'|'+rw]||0;sum+=n;return '<td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td>'}).join('');
             return '<tr><td>'+esc(rw)+'</td>'+tds+'<td style="text-align:right;font-weight:700">'+sum+'</td></tr>'}).join('')+'</table></div>';
+        for(var k2=2;k2<dims;k2++){
+          var vals=[];ps2.forEach(function(s){if(vals.indexOf(s[k2])<0)vals.push(s[k2])});
+          html+='<b style="display:block;margin-top:12px">'+esc(lb[k2]||'')+'</b><table>'+vals.map(function(v){var n=(extra[k2]||{})[v]||0;return '<tr><td>'+esc(v)+'</td><td style="text-align:right;'+(n?'font-weight:700':'color:var(--mut)')+'">'+n+'</td></tr>'}).join('')+'</table>';
+        }
       }else if(p.id==='ring'){
         html+=ringTag;
         var rk=Object.keys(rSizes).sort(sortNum);
@@ -700,7 +762,7 @@ function renderOrders(){
   var l=adm.orders.filter(function(o){return (!f||o.status===f)&&(!q||(o.orderNo+o.name+o.phone).toLowerCase().indexOf(q)>=0)});
   $('ad-orders').innerHTML=l.map(function(o){
     return '<div class="card"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="mut">'+esc(o.time)+'</span></div>'+
-      '<div>'+esc(o.name)+' · '+esc(o.phone)+(o.group?' · '+esc(o.group):'')+'</div><pre>'+esc(o.items)+'</pre>'+
+      '<div>'+esc(o.name)+' · '+esc(o.phone)+(o.group?' · '+esc(o.group):'')+'</div>'+itemsHtml(o,'admin')+
       (ringDeptQty(o)>0?'<div class="row" style="margin:6px 0"><span>ขนาดที่วัดจริง ('+ringDeptQty(o)+' วง)</span><input id="rs'+esc(o.orderNo)+'" value="'+esc(o.ringSize||'')+'" placeholder="เช่น 56 หรือ 56, 58" style="flex:1;min-width:0"><button class="btn sec" onclick="saveRing(\''+o.orderNo+'\')">บันทึก</button></div>':'')+
       (o.delivery?'<div class="mut">'+(o.delivery==='จัดส่ง'?'จัดส่ง +฿'+o.fee+' · '+esc(o.addr)+' · โทร '+esc(o.dphone):'รับด้วยตนเอง')+'</div>':'')+
       (o.note?'<div class="mut">หมายเหตุ: '+esc(o.note)+'</div>':'')+

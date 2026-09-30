@@ -7,3 +7,6 @@ seed.sql
 tools/old-data.json
 *.log
 Thumbs.db
+
+tools/backup-*.json
+worker/set-options.sql
