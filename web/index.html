@@ -113,6 +113,16 @@ a{color:#8db4ff}
 .fab-menu{background:#0a1430;border:1px solid var(--bd);border-radius:16px;padding:8px;box-shadow:0 10px 28px rgba(0,0,0,.5);animation:up .2s ease;min-width:230px}
 .fab-menu button{display:flex;gap:10px;align-items:center;width:100%;background:none;border:0;color:var(--ink);font:inherit;padding:12px;border-radius:12px;cursor:pointer;text-align:left}
 .fab-menu button:active,.fab-menu button:hover{background:var(--pri2)}
+.fab-menu button+button{margin-top:2px}
+.fab-menu{min-width:270px}
+.mi{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.mi svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mi.warn{background:linear-gradient(135deg,#ffa53d,#e5484d)}
+.mi.help{background:linear-gradient(135deg,#4d9bff,#1c56d6)}
+.mt{display:flex;flex-direction:column;flex:1;min-width:0;line-height:1.25}
+.mt b{font-size:15px}
+.mt small{color:var(--mut);font-size:12px}
+.fab-menu .chev{width:18px;height:18px;stroke:var(--mut);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 @media(min-width:700px){.fab{right:24px;bottom:24px}.fab.up{bottom:160px}}
 .rp-item{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-top:10px}
 .rp-item.new{border-color:var(--gold);background:rgba(245,184,46,.07)}
@@ -234,8 +244,16 @@ a{color:#8db4ff}
 
 <div class="fab" id="fab">
   <div class="fab-menu hide" id="fab-menu">
-    <button onclick="openReport('problem')"><span>🛠️</span><span>แจ้งปัญหาการใช้งาน</span></button>
-    <button onclick="openReport('contact')"><span>💬</span><span>ติดต่อแอดมิน</span></button>
+    <button onclick="openReport('problem')">
+      <span class="mi warn"><svg viewBox="0 0 24 24"><path d="M12 3.6 2.9 19.4h18.2L12 3.6z"/><path d="M12 10v4.6"/><path d="M12 17.4h.01"/></svg></span>
+      <span class="mt"><b>แจ้งปัญหาการใช้งาน</b><small>พบข้อผิดพลาด / ใช้งานไม่ได้</small></span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <button onclick="openReport('contact')">
+      <span class="mi help"><svg viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.6"/><rect x="17" y="14" width="4" height="6" rx="1.6"/><path d="M19 20c0 1.3-1.7 2-4 2h-2"/></svg></span>
+      <span class="mt"><b>ติดต่อแอดมิน</b><small>สอบถาม / ขอความช่วยเหลือ</small></span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
   </div>
   <button class="fab-btn" onclick="toggleFab()" aria-label="แจ้งปัญหา / ติดต่อแอดมิน"><svg class="ic" viewBox="0 0 32 32" aria-hidden="true">
       <defs><linearGradient id="fabg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#12245a"/><stop offset="1" stop-color="#050b1a"/></linearGradient></defs>
@@ -285,7 +303,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='12';
+var VER='13';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
