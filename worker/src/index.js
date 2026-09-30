@@ -239,6 +239,8 @@ const API = {
       })),
       payInfo: await setting(env, 'PAY_INFO', ''),
       bank: await bankInfo(env),
+      mode: await setting(env, 'MODE', 'survey'),
+      contactPhone: await setting(env, 'CONTACT_PHONE', ''),
       shipFee: Number(await setting(env, 'SHIP_FEE', '50')) || 0,
     };
   },
@@ -251,10 +253,20 @@ const API = {
   },
 
   async cancelMyOrder(env, orderNo, phone) {
-    const o = await env.DB.prepare('SELECT status FROM orders WHERE order_no = ? AND phone = ?').bind(orderNo, digits(phone)).first();
+    const o = await env.DB.prepare('SELECT status, items_json, stock_deducted FROM orders WHERE order_no = ? AND phone = ?').bind(orderNo, digits(phone)).first();
     if (!o) fail('ไม่พบออเดอร์');
-    if (o.status !== 'สำรวจ') fail('ยกเลิกเองได้เฉพาะช่วงสำรวจ กรุณาติดต่อแอดมิน');
-    await env.DB.prepare("UPDATE orders SET status = 'ยกเลิก' WHERE order_no = ?").bind(orderNo).run();
+    if (o.status === 'ยกเลิก') fail('ออเดอร์นี้ถูกยกเลิกไปแล้ว');
+    if ((await setting(env, 'MODE', 'survey')) === 'closed') fail('ปิดรับแล้ว ยกเลิกเองไม่ได้ กรุณาติดต่อแอดมิน');
+    if (o.status !== 'สำรวจ' && o.status !== 'รอชำระเงิน') fail('ออเดอร์ชำระเงินแล้วหรืออยู่ระหว่างดำเนินการ ยกเลิกเองไม่ได้ กรุณาติดต่อแอดมิน');
+    const stmts = [env.DB.prepare("UPDATE orders SET status = 'ยกเลิก' WHERE order_no = ?").bind(orderNo)];
+    if (isDeducted(o.stock_deducted)) {
+      let items = [];
+      try { items = JSON.parse(o.items_json); } catch (e) { /* ignore */ }
+      items.forEach((it) => {
+        stmts.push(env.DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ? AND stock IS NOT NULL').bind(it.qty, it.id));
+      });
+    }
+    await env.DB.batch(stmts);
     return true;
   },
 
