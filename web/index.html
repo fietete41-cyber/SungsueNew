@@ -200,6 +200,15 @@ a{color:#8db4ff}
           <option value="paid">เฉพาะที่ชำระแล้ว</option>
         </select>
       </div>
+      <div class="card" style="margin:10px 0 0;padding:10px">
+        <b style="font-size:14px">ส่งสรุปให้ร้าน (ตามตัวกรองด้านบน)</b>
+        <div class="row" style="margin-top:8px;flex-wrap:wrap">
+          <button class="btn sec" style="flex:1;min-width:110px" onclick="printReport()">พิมพ์ / PDF</button>
+          <button class="btn sec" style="flex:1;min-width:110px" onclick="downloadReport()">ไฟล์ Word</button>
+          <button class="btn sec" style="flex:1;min-width:110px" onclick="copyReportText()">คัดลอกข้อความ</button>
+        </div>
+        <div class="mut" style="margin-top:6px;font-size:12px">รายงานไม่มีชื่อ/เบอร์ลูกค้า มีเฉพาะจำนวนเสื้อ สี ไซร์ส แก้ว หมวก และรายละเอียดของแต่ละเซ็ต</div>
+      </div>
       <div id="ad-sum"></div>
     </div>
     <div class="card">
@@ -328,7 +337,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='22';
+var VER='23';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -752,6 +761,117 @@ function prepHtml(ords){
   return '<div class="mut" style="margin-top:8px">แตกของในเซ็ตเป็นชิ้น (เสื้อ แก้ว หมวก พวงกุญแจ) แล้วรวมกับที่สั่งเดี่ยว เพื่อใช้สั่งผลิต — ไม่นับออเดอร์ที่ยกเลิก ตามตัวกรองด้านบน</div>'+
     shirt('poloShirt','เสื้อโปโล (รวมในเซ็ตโปโล)')+shirt('teeShirt','เสื้อยืด (รวมในเซ็ตเสื้อยืด)')+
     colorTable('mug','แก้วเก็บความเย็น (รวมในเซ็ตทุกแบบ)','ใบ')+colorTable('cap','หมวกแก๊ป (รวมในเซ็ตโปโล)','ใบ')+keychainTable();
+}
+/* ---------- รายงานสรุปส่งร้าน (พิมพ์ / Word / ข้อความ) ---------- */
+function sumOrders(){var only=$('ad-sumf').value==='paid';return adm.orders.filter(function(o){return o.status!=='ยกเลิก'&&(!only||PAID.indexOf(o.status)>=0)})}
+function sizeIdx(s){var i=SZ_SIZES.indexOf(s);return i<0?99:i}
+function colIdx(c){return c==='ขาว'?0:c==='ดำ'?1:2}
+function setCmp(a,b){
+  if(a.id!==b.id)return a.id<b.id?1:-1;var pa=a.opt.split(' / '),pb=b.opt.split(' / ');
+  return colIdx(normCol(pa[0]))-colIdx(normCol(pb[0]))||sizeIdx(pa[1])-sizeIdx(pb[1])||colIdx(normCol(pa[2]))-colIdx(normCol(pb[2]))||colIdx(normCol(pa[3]))-colIdx(normCol(pb[3]))}
+function soloCmp(a,b){
+  if(a.name!==b.name)return a.name<b.name?-1:1;var pa=String(a.opt).split(' / '),pb=String(b.opt).split(' / ');
+  return colIdx(normCol(pa[0]))-colIdx(normCol(pb[0]))||sizeIdx(pa[1])-sizeIdx(pb[1])}
+function reportData(ords){
+  var D={orders:ords.length,shirt:{polo:{},tee:{}},mug:{},cap:{},sets:{},solo:{},tot:{polo:0,tee:0,mug:0,cap:0,key:0},from:{}};
+  var add=function(m,k,q){m[k]=(m[k]||0)+q};
+  ords.forEach(function(o){var items=[];try{items=JSON.parse(o.json)}catch(e){}
+    items.forEach(function(it){
+      var isSet=it.id==='set-polo'||it.id==='set-tee';
+      if(isSet){var key=it.id+'|'+it.opt;D.sets[key]=(D.sets[key]||{id:it.id,name:it.name,opt:it.opt,q:0});D.sets[key].q+=it.qty}
+      else{var k2=it.id+'|'+it.opt;D.solo[k2]=(D.solo[k2]||{id:it.id,name:it.name,opt:it.opt,q:0});D.solo[k2].q+=it.qty}
+      componentsOf(it).forEach(function(c){
+        if(c.k==='poloShirt'){add(D.shirt.polo,c.color+'|'+c.size,c.q);D.tot.polo+=c.q}
+        else if(c.k==='teeShirt'){add(D.shirt.tee,c.color+'|'+c.size,c.q);D.tot.tee+=c.q}
+        else if(c.k==='mug'){D.mug[c.color]=D.mug[c.color]||{solo:0,set:0};D.mug[c.color][c.src]+=c.q;D.tot.mug+=c.q}
+        else if(c.k==='cap'){D.cap[c.color]=D.cap[c.color]||{solo:0,set:0};D.cap[c.color][c.src]+=c.q;D.tot.cap+=c.q}
+        else if(c.k==='keychain'){D.tot.key+=c.q}
+      });
+    });
+  });
+  return D;
+}
+function rpt(ords){
+  var D=reportData(ords),only=$('ad-sumf').value==='paid';
+  var date=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  var T=function(s){return esc(s)};
+  function table(head,rows,foot){return '<table class="t"><tr>'+head.map(function(x,i){return '<th'+(i?' class="r"':'')+'>'+T(x)+'</th>'}).join('')+'</tr>'+
+    rows.map(function(r){return '<tr>'+r.map(function(x,i){return '<td'+(i?' class="r"':'')+'>'+T(x)+'</td>'}).join('')+'</tr>'}).join('')+
+    (foot?'<tr class="f">'+foot.map(function(x,i){return '<td'+(i?' class="r"':'')+'><b>'+T(x)+'</b></td>'}).join('')+'</tr>':'')+'</table>'}
+  function shirtSec(title,m,total){
+    var keys=Object.keys(m);if(!keys.length)return '<h3>'+T(title)+' — 0 ตัว</h3>';
+    var cols=[],rows=[];keys.forEach(function(k){var p=k.split('|');if(cols.indexOf(p[0])<0)cols.push(p[0]);if(rows.indexOf(p[1])<0)rows.push(p[1])});
+    cols.sort(function(a,b){return colIdx(a)-colIdx(b)});rows.sort(function(a,b){return sizeIdx(a)-sizeIdx(b)});
+    var sumC={};
+    var body=rows.map(function(s){var sum=0;var cells=cols.map(function(c){var n=m[c+'|'+s]||0;sum+=n;sumC[c]=(sumC[c]||0)+n;return String(n||'-')});return [s].concat(cells,[String(sum)])});
+    return '<h3>'+T(title)+' — รวม '+total+' ตัว</h3>'+table(['ไซร์ส'].concat(cols.map(function(c){return 'สี'+c}),['รวม']),body,['รวม'].concat(cols.map(function(c){return String(sumC[c]||0)}),[String(total)]));
+  }
+  function colorSec(title,m,total,unit){
+    var cols=Object.keys(m).sort(function(a,b){return colIdx(a)-colIdx(b)});
+    if(!cols.length)return '<h3>'+T(title)+' — 0 '+unit+'</h3>';
+    var s=0,e=0;var rows=cols.map(function(c){var a=m[c].solo,b=m[c].set;s+=a;e+=b;return ['สี'+c,String(a||'-'),String(b||'-'),String(a+b)]});
+    return '<h3>'+T(title)+' — รวม '+total+' '+unit+'</h3>'+table(['สี','สั่งเดี่ยว','อยู่ในเซ็ต','รวม ('+unit+')'],rows,['รวม',String(s),String(e),String(total)]);
+  }
+  var setRows=Object.keys(D.sets).map(function(k){return D.sets[k]}).sort(setCmp);
+  var setTot={'set-polo':0,'set-tee':0};setRows.forEach(function(x){setTot[x.id]=(setTot[x.id]||0)+x.q});
+  function setSec(id,title,hasCap){
+    var rows=setRows.filter(function(x){return x.id===id}).map(function(x){var p=x.opt.split(' / ');return [(normCol(p[0])||'-'),p[1]||'-',(normCol(p[2])||'-')].concat(hasCap?[(normCol(p[3])||'-')]:[],[String(x.q)])});
+    if(!rows.length)return '';
+    return '<h3>'+T(title)+' — รวม '+setTot[id]+' ชุด</h3>'+table(['สีกล่อง/เสื้อ','ไซร์ส','สีแก้ว'].concat(hasCap?['สีหมวก']:[],['จำนวน (ชุด)']),rows,['รวม'].concat(hasCap?['','','']:['',''],[String(setTot[id])]));
+  }
+  var soloRows=Object.keys(D.solo).map(function(k){return D.solo[k]}).sort(soloCmp);
+  var soloSec=soloRows.length?'<h3>รายการสั่งเดี่ยว (ไม่ใช่เซ็ต)</h3>'+table(['สินค้า','ตัวเลือก','จำนวน'],soloRows.map(function(x){return [x.name,x.opt||'-',String(x.q)]})):'';
+  var sumTbl=table(['รายการที่ต้องผลิต/เตรียม','จำนวน'],[
+    ['เสื้อโปโล (รวมในเซ็ต)',D.tot.polo+' ตัว'],['เสื้อยืด (รวมในเซ็ต)',D.tot.tee+' ตัว'],['แก้วเก็บความเย็น (รวมในเซ็ต)',D.tot.mug+' ใบ'],
+    ['หมวกแก๊ป (รวมในเซ็ต)',D.tot.cap+' ใบ'],['พวงกุญแจเปิดขวด (แถมกับเซ็ต)',D.tot.key+' ชิ้น'],
+    ['เซ็ตโปโล',(setTot['set-polo']||0)+' ชุด'],['เซ็ตเสื้อยืด',(setTot['set-tee']||0)+' ชุด']]);
+  var body='<h1>สรุปรายการสั่งทำของที่ระลึก 35 ปี</h1><div class="s">แผนกวิชาช่างไฟฟ้ากำลัง วิทยาลัยการอาชีพนครปฐม · Electrical NPT Raikhing</div>'+
+    '<div class="s">วันที่ '+T(date)+' · นับจาก '+D.orders+' ออเดอร์ ('+(only?'เฉพาะที่ชำระเงินแล้ว':'ทุกออเดอร์ที่ไม่ยกเลิก')+')</div>'+
+    '<h2>1) ภาพรวมจำนวนที่ต้องเตรียม</h2>'+sumTbl+
+    '<h2>2) เสื้อ (รวมเสื้อในเซ็ต แยกสี/ไซร์ส)</h2>'+shirtSec('เสื้อโปโล',D.shirt.polo,D.tot.polo)+shirtSec('เสื้อยืด',D.shirt.tee,D.tot.tee)+
+    '<h2>3) แก้วและหมวก (แยกสี)</h2>'+colorSec('แก้วเก็บความเย็น',D.mug,D.tot.mug,'ใบ')+colorSec('หมวกแก๊ป',D.cap,D.tot.cap,'ใบ')+
+    '<h2>4) รายละเอียดของแต่ละเซ็ต (สำหรับจัดกล่อง)</h2>'+(setSec('set-polo','เซ็ตโปโล (เสื้อโปโล + หมวก + แก้ว + พวงกุญแจ)',true)+setSec('set-tee','เซ็ตเสื้อยืด (เสื้อยืด + แก้ว + พวงกุญแจ)',false)||'<div>ไม่มีเซ็ต</div>')+
+    (soloSec?'<h2>5) รายการสั่งเดี่ยว</h2>'+soloSec:'')+
+    '<div class="s" style="margin-top:14px">พวงกุญแจเปิดขวดเป็นของแถมกับเซ็ต · ไซร์ส 3XL ขึ้นไปมีค่าเพิ่ม · จัดทำจากระบบสั่งจองของที่ระลึก</div>';
+  return body;
+}
+var RPT_CSS='body{font-family:"TH SarabunPSK","TH Sarabun New",Sarabun,sans-serif;font-size:16pt;color:#000}h1{font-size:22pt;margin:0 0 4px}h2{font-size:18pt;margin:18px 0 6px;border-bottom:2px solid #1c3b8a;color:#1c3b8a}h3{font-size:16pt;margin:12px 0 4px}.s{font-size:13pt;color:#333}table.t{border-collapse:collapse;width:100%;margin:4px 0 8px}table.t th,table.t td{border:1px solid #444;padding:3px 8px;font-size:14pt;text-align:left}table.t th{background:#e8eefc}table.t .r{text-align:right}table.t tr.f td{background:#f3f3f3}@page{size:A4;margin:14mm}';
+function printReport(){
+  var w=window.open('','_blank');if(!w)return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่');
+  w.document.write('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>สรุปรายการสั่งทำ</title><style>'+RPT_CSS+'</style></head><body>'+rpt(sumOrders())+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print()},400)}</scr'+'ipt></body></html>');
+  w.document.close();
+}
+function downloadReport(){
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>สรุปรายการสั่งทำ</title><style>'+RPT_CSS+'</style></head><body>'+rpt(sumOrders())+'</body></html>';
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+html],{type:'application/msword'}));
+  var d=new Date();a.download='สรุปสั่งทำของที่ระลึก-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.doc';a.click();
+}
+function reportText(ords){
+  var D=reportData(ords),L=[],only=$('ad-sumf').value==='paid';
+  var date=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  L.push('สรุปรายการสั่งทำของที่ระลึก 35 ปี','วันที่ '+date+' · '+D.orders+' ออเดอร์ ('+(only?'เฉพาะชำระแล้ว':'ไม่รวมยกเลิก')+')','');
+  function shirt(title,m,total){
+    L.push('■ '+title+' รวม '+total+' ตัว');
+    var cols=[];Object.keys(m).forEach(function(k){var c=k.split('|')[0];if(cols.indexOf(c)<0)cols.push(c)});cols.sort(function(a,b){return colIdx(a)-colIdx(b)});
+    cols.forEach(function(c){var parts=[],sum=0;Object.keys(m).filter(function(k){return k.split('|')[0]===c}).sort(function(a,b){return sizeIdx(a.split('|')[1])-sizeIdx(b.split('|')[1])}).forEach(function(k){parts.push(k.split('|')[1]+' '+m[k]);sum+=m[k]});L.push('  สี'+c+' ('+sum+'): '+parts.join(', '))});L.push('');
+  }
+  shirt('เสื้อโปโล (รวมในเซ็ต)',D.shirt.polo,D.tot.polo);shirt('เสื้อยืด (รวมในเซ็ต)',D.shirt.tee,D.tot.tee);
+  function col(title,m,total){L.push('■ '+title+' รวม '+total+' ใบ');Object.keys(m).sort(function(a,b){return colIdx(a)-colIdx(b)}).forEach(function(c){L.push('  สี'+c+': '+(m[c].solo+m[c].set)+' (เดี่ยว '+m[c].solo+' + ในเซ็ต '+m[c].set+')')});L.push('')}
+  col('แก้วเก็บความเย็น',D.mug,D.tot.mug);col('หมวกแก๊ป',D.cap,D.tot.cap);
+  L.push('■ พวงกุญแจเปิดขวด (แถมกับเซ็ต) '+D.tot.key+' ชิ้น','');
+  ['set-polo','set-tee'].forEach(function(id){
+    var rows=Object.keys(D.sets).map(function(k){return D.sets[k]}).filter(function(x){return x.id===id}).sort(setCmp);if(!rows.length)return;
+    var tot=rows.reduce(function(a,x){return a+x.q},0);L.push('■ '+(id==='set-polo'?'เซ็ตโปโล':'เซ็ตเสื้อยืด')+' รวม '+tot+' ชุด');
+    rows.forEach(function(x){var p=x.opt.split(' / ');L.push('  - กล่อง/เสื้อ'+normCol(p[0])+' ไซร์ส '+p[1]+' แก้ว'+normCol(p[2])+(p[3]?' หมวก'+normCol(p[3]):'')+' x'+x.q)});L.push('')});
+  var solo=Object.keys(D.solo).map(function(k){return D.solo[k]}).sort(soloCmp);
+  if(solo.length){L.push('■ สั่งเดี่ยว');solo.forEach(function(x){L.push('  - '+x.name+(x.opt?' ('+x.opt+')':'')+' x'+x.q)})}
+  return L.join('\n');
+}
+function copyReportText(){
+  var t=reportText(sumOrders());
+  function ok(){toast('คัดลอกสรุปแล้ว นำไปวางส่งในไลน์ได้เลย')}
+  function fb(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){toast('คัดลอกไม่ได้')}a.remove()}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
 }
 function sortNum(a,b){return a.localeCompare(b,'th',{numeric:true})}
 function renderSummary(){
