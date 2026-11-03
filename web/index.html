@@ -79,10 +79,10 @@ a{color:#8db4ff}
   .bar{bottom:96px}
 }
 /* แผ่นล่าง (ตะกร้า + ข้อมูลผู้สั่ง) */
-#sheet,#pm,#rp,#ed,#sz{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
-#sheet.on,#pm.on,#rp.on,#ed.on,#sz.on{display:flex}
+#sheet,#pm,#rp,#ed,#sz,#nt,#sv{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center}
+#sheet.on,#pm.on,#rp.on,#ed.on,#sz.on,#nt.on,#sv.on{display:flex}
 .panel{background:#0a1430;border:1px solid var(--bd);border-radius:22px 22px 0 0;width:100%;max-width:600px;max-height:93vh;overflow:auto;padding:12px 16px calc(18px + env(safe-area-inset-bottom));animation:up .25s ease}
-@media(min-width:700px){#sheet,#pm,#rp,#ed,#sz{align-items:center}.panel{border-radius:22px}}
+@media(min-width:700px){#sheet,#pm,#rp,#ed,#sz,#nt,#sv{align-items:center}.panel{border-radius:22px}}
 @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 .grab{width:44px;height:4px;background:var(--bd);border-radius:9px;margin:0 auto 10px}
 .cl{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)}
@@ -137,6 +137,10 @@ a{color:#8db4ff}
 .sz-tabs{display:flex;gap:8px;margin:10px 0}
 .sz-tabs button{flex:1}
 .sz-tabs button.on{background:linear-gradient(135deg,#2f7bff,#1c56d6);color:#fff}
+.rv-item{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-top:10px}
+.rv-item .amt{color:var(--gold);font-weight:700;font-size:18px}
+.slipimg{width:100%;max-height:55vh;object-fit:contain;border-radius:12px;background:rgba(255,255,255,.05);display:block}
+.warnbox{background:rgba(245,184,46,.12);border:1px solid rgba(245,184,46,.45);color:var(--gold);padding:10px;border-radius:12px;margin-top:8px}
 .sel-n{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .bankbox{background:rgba(255,255,255,.06);border:1px solid var(--bd);border-radius:16px;padding:14px;text-align:center;margin:10px 0}
 .acc{font-size:26px;font-weight:700;color:var(--gold);letter-spacing:1px;margin:2px 0 6px;word-break:break-all}
@@ -187,6 +191,12 @@ a{color:#8db4ff}
   <div id="ad-body" class="hide">
     <div class="row" style="justify-content:flex-end;margin-bottom:8px"><button class="btn sec" onclick="adminLogout()">ออกจากระบบ</button></div>
     <div class="stat" id="ad-stat"></div>
+    <div class="card" id="rv-card">
+      <div class="row" style="justify-content:space-between"><b>💳 รอตรวจสอบการชำระเงิน</b><span class="tag" id="rv-count">0</span></div>
+      <div class="mut" style="margin-top:4px">ลูกค้าที่แนบสลิปหรือแจ้งโอนแล้ว กด "ดูสลิป" เช็กยอดแล้วกดยืนยันว่าโอนแล้ว</div>
+      <div id="rv-list"></div>
+      <div class="row" style="margin-top:10px"><span class="mut" id="rv-nopay"></span><button class="btn sec" style="margin-left:auto;padding:6px 12px;min-height:0;font-size:13px" onclick="showNoPay()">ดูคนที่ยังไม่แจ้ง</button></div>
+    </div>
     <div class="card">
       <div class="row" style="justify-content:space-between"><b>📨 ปัญหาที่ผู้ใช้แจ้ง</b><span class="tag" id="rp-count">0 ใหม่</span></div>
       <div id="rp-list"><div class="mut" style="margin-top:8px">ยังไม่มีเรื่องแจ้ง</div></div>
@@ -309,6 +319,18 @@ a{color:#8db4ff}
   <button class="btn full" id="rp-btn" onclick="sendReport()">ส่งเรื่องให้แอดมิน</button>
 </div></div>
 
+<div id="sv" onclick="if(event.target===this)closeSlip()"><div class="panel">
+  <div class="grab"></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px">ตรวจสอบการชำระเงิน</b><button class="btn sec" onclick="closeSlip()">ปิด</button></div>
+  <div id="sv-body"></div>
+</div></div>
+
+<div id="nt" onclick="if(event.target===this)closeNotice()"><div class="panel">
+  <div class="grab"></div>
+  <div class="row" style="justify-content:space-between"><b style="font-size:18px">แจ้งโอนเงิน / ส่งสลิป</b><button class="btn sec" onclick="closeNotice()">ปิด</button></div>
+  <div id="nt-body"></div>
+</div></div>
+
 <div id="pm" onclick="if(event.target===this)closePay()"><div class="panel">
   <div class="grab"></div>
   <div class="row" style="justify-content:space-between"><b style="font-size:18px">ชำระเงิน</b><button class="btn sec" onclick="closePay()">ปิด</button></div>
@@ -337,7 +359,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='23';
+var VER='25';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -528,8 +550,9 @@ function track(){
         (res.mode!=='closed'&&(o.status==='สำรวจ'||o.status==='รอชำระเงิน')?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="cancelMine(\''+o.orderNo+'\')">ยกเลิกออเดอร์นี้</button>':'')+
         (o.status==='ชำระแล้ว'||o.status==='กำลังผลิต'?'<div class="mut" style="margin-top:8px">ต้องการยกเลิกหรือแก้ไขมากกว่านี้ กรุณา <a href="#" onclick="openReport(\'contact\');return false">ติดต่อแอดมิน</a></div>':'')+
         (res.mode==='closed'&&(o.status==='สำรวจ'||o.status==='รอชำระเงิน')?'<div class="mut" style="margin-top:8px">ปิดรับแล้ว หากต้องการยกเลิกกรุณา <a href="#" onclick="openReport(\'contact\');return false">ติดต่อแอดมิน</a></div>':'')+
-        (o.hasSlip?'<div class="mut" style="margin-top:8px">✔ แนบสลิปแล้ว รอแอดมินตรวจสอบ</div>':'')+
-        (o.status==='รอชำระเงิน'?'<button class="btn full" onclick="openPay('+k+')">'+(o.hasSlip?'ดูบัญชี / ส่งสลิปใหม่':'ชำระเงิน')+'</button>':'')+'</div>';
+        (o.status==='รอชำระเงิน'&&o.adminMsg?'<div class="warnbox"><b>แอดมินแจ้ง:</b> '+esc(o.adminMsg)+'</div>':'')+
+        (o.status==='รอชำระเงิน'&&o.noticeAt?'<div class="mut" style="margin-top:8px">✔ แจ้งโอนแล้ว'+(o.hasSlip?' (แนบสลิปแล้ว)':' (ยังไม่แนบสลิป)')+(o.noticeAmount!=null?' ยอด ฿'+Number(o.noticeAmount).toLocaleString():'')+' — รอแอดมินตรวจสอบ</div>':'')+
+        (o.status==='รอชำระเงิน'?'<button class="btn full" onclick="openPay('+k+')">ชำระเงิน / ดูบัญชีโอน</button><button class="btn sec" style="width:100%;margin-top:8px" onclick="openNotice('+k+')">'+(o.noticeAt?'ส่งสลิป / แจ้งโอนอีกครั้ง':'แจ้งโอนเงิน / ส่งสลิป')+'</button>':'')+'</div>';
     }).join(''):'<div class="card mut">ไม่พบออเดอร์</div>';
   });
 }
@@ -553,9 +576,43 @@ function openPay(k){
   $('pm-body').innerHTML='<div class="mut" style="margin-top:6px">ออเดอร์ '+esc(o.orderNo)+'</div>'+
     '<div style="margin:8px 0"><span class="mut">ยอดที่ต้องโอน</span><div class="price" style="font-size:24px">'+payTxt(o)+'</div></div>'+
     '<b>โอนเข้าบัญชี</b>'+bankHtml(bank)+
-    '<label>หลังโอนแล้ว แนบสลิปที่นี่</label><input type="file" accept="image/*" onchange="sendSlip(this,\''+o.orderNo+'\',closePay)">'+
-    '<div class="mut" style="margin-top:6px">แนบสลิปทีหลังได้ โดยกลับมาที่หน้านี้อีกครั้ง</div>';
+    '<button class="btn full" onclick="closePay();openNotice('+k+')">โอนแล้ว — แจ้งโอน / ส่งสลิป</button>'+
+    '<div class="mut" style="margin-top:6px">โอนเสร็จแล้วกดปุ่มด้านบน เพื่อส่งสลิปและบอกยอด/เวลาที่โอนให้แอดมินตรวจสอบ</div>';
   $('pm').classList.add('on');document.body.style.overflow='hidden';
+}
+function fileToSlip(file,cb){
+  if(!file)return cb(null);
+  var fr=new FileReader(),img=new Image();
+  fr.onload=function(){img.onload=function(){
+    var s=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    cb({base64:c.toDataURL('image/jpeg',.8).split(',')[1],mime:'image/jpeg'});
+  };img.onerror=function(){toast('เปิดไฟล์รูปไม่ได้ กรุณาเลือกรูปสลิปใหม่')};img.src=fr.result};
+  fr.readAsDataURL(file);
+}
+var ntCtx=null;
+function nowLocal(){var d=new Date(),p=function(n){return String(n).padStart(2,'0')};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
+function openNotice(k){
+  var o=lastOrders[k];if(!o)return;ntCtx={k:k,no:o.orderNo};
+  var due=Number(o.total||0)+Number(o.fee||0);
+  $('nt-body').innerHTML='<div class="mut" style="margin-top:6px">ออเดอร์ '+esc(o.orderNo)+'</div>'+
+    '<div style="margin:6px 0"><span class="mut">ยอดที่ต้องโอน</span><div class="price" style="font-size:22px">'+payTxt(o)+'</div></div>'+
+    '<label>แนบสลิปโอนเงิน (แนะนำ)</label><input type="file" id="nt-slip" accept="image/*">'+
+    '<label>ยอดที่โอน (บาท)</label><input id="nt-amt" type="number" inputmode="numeric" value="'+(due>0?due:'')+'">'+
+    '<label>วันเวลาที่โอน</label><input id="nt-time" type="datetime-local" value="'+nowLocal()+'">'+
+    '<label>หมายเหตุ (ไม่บังคับ)</label><textarea id="nt-note" rows="2" placeholder="เช่น โอนจากบัญชีชื่ออื่น / โอนรวมหลายออเดอร์"></textarea>'+
+    '<button class="btn full" id="nt-btn" onclick="sendNotice()">ส่งแจ้งโอน</button>'+
+    '<div class="mut" style="margin-top:6px">ถ้าไม่มีสลิป กดส่งได้เลย แอดมินจะตรวจจากยอดและเวลาที่โอน</div>';
+  $('nt').classList.add('on');document.body.style.overflow='hidden';
+}
+function closeNotice(){$('nt').classList.remove('on');document.body.style.overflow=''}
+function sendNotice(){
+  if(!ntCtx)return;var c=ntCtx,f=$('nt-slip').files[0];
+  fileToSlip(f,function(slip){
+    run('notifyPayment',[c.no,$('tk-phone').value,{amount:$('nt-amt').value,time:String($('nt-time').value||'').replace('T',' '),note:$('nt-note').value,slip:slip}],function(r){
+      toast(r.hasSlip?'ส่งสลิปและแจ้งโอนแล้ว รอแอดมินตรวจสอบ':'แจ้งโอนแล้ว รอแอดมินตรวจสอบ');closeNotice();track();
+    },$('nt-btn'));
+  });
 }
 function closePay(){$('pm').classList.remove('on');document.body.style.overflow=''}
 var ordCache={},edCtx=null;
@@ -637,7 +694,7 @@ function adminLogin(p,auto){
     ADMIN=p;STATUSES=r.statuses;
     if(!auto&&$('pin-rem').checked){try{localStorage.setItem('sv_pin',p)}catch(e){}}
     $('ad-login').classList.add('hide');$('ad-body').classList.remove('hide');
-    $('ad-filter').innerHTML='<option value="">ทุกสถานะ</option>'+STATUSES.map(function(s){return '<option value="'+s+'">'+stLbl(s)+'</option>'}).join('');
+    $('ad-filter').innerHTML='<option value="">ทุกสถานะ</option><option value="_review">💳 รอตรวจสลิป (แจ้งโอนแล้ว)</option><option value="_nopay">⏳ รอชำระเงิน (ยังไม่แจ้ง)</option>'+STATUSES.map(function(s){return '<option value="'+s+'">'+stLbl(s)+'</option>'}).join('');
     adminLoad();
   },null,function(m){
     if(auto){try{localStorage.removeItem('sv_pin')}catch(e){}}
@@ -651,14 +708,14 @@ function autoAdmin(){
 }
 function adminLogout(){
   try{localStorage.removeItem('sv_pin')}catch(e){}
-  ADMIN='';adm=null;pin='';pinDraw();reports=[];prevNew=-1;renderReports();
+  ADMIN='';adm=null;pin='';pinDraw();reports=[];prevNew=-1;lastReviewN=-1;renderReports();
   $('ad-body').classList.add('hide');$('ad-login').classList.remove('hide');
 }
 document.addEventListener('keydown',function(e){
   if(curTab!=='admin'||$('ad-login').classList.contains('hide'))return;
   if(/^\d$/.test(e.key))pinKey(e.key);else if(e.key==='Backspace')pinKey('b');
 });
-function adminLoad(){run('adminGetData',[ADMIN],function(d){adm=d;renderAdmin();loadReports()})}
+function adminLoad(){run('adminGetData',[ADMIN],function(d){adm=d;renderAdmin();lastReviewN=reviewList().length;renderReview();loadReports()})}
 /* ---------- แจ้งปัญหา ---------- */
 var rpKind='problem';
 function toggleFab(){var m=$('fab-menu');m.classList.toggle('hide');$('fab').classList.toggle('open',!m.classList.contains('hide'))}
@@ -697,7 +754,7 @@ function loadReports(){
 }
 function renderReports(){
   var n=reports.filter(function(x){return x.status==='ใหม่'}).length;
-  var b=$('admBadge');b.textContent=n;b.classList.toggle('hide',!n);
+  updateBadge();
   $('rp-count').textContent=n+' ใหม่';
   $('rp-list').innerHTML=reports.length?reports.map(function(x){
     var isNew=x.status==='ใหม่';
@@ -707,9 +764,62 @@ function renderReports(){
       '<button class="btn sec" onclick="delReport('+x.id+')">ลบ</button></div></div>';
   }).join(''):'<div class="mut" style="margin-top:8px">ยังไม่มีเรื่องแจ้ง</div>';
 }
+/* ---------- ตรวจสลิป / ยืนยันการโอน ---------- */
+var lastReviewN=-1;
+var EYE='<svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align:-4px;margin-right:4px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+function dueOf(o){return Number(o.total||0)+Number(o.fee||0)}
+function reviewList(){return (adm?adm.orders:[]).filter(function(o){return o.status==='รอชำระเงิน'&&o.noticeAt})}
+function updateBadge(){
+  var n=reports.filter(function(x){return x.status==='ใหม่'}).length+reviewList().length;
+  var b=$('admBadge');b.textContent=n;b.classList.toggle('hide',!n);
+}
+function renderReview(){
+  var l=reviewList();
+  $('rv-count').textContent=l.length+' รายการ';
+  $('rv-nopay').textContent='รอชำระเงินแต่ยังไม่แจ้ง: '+(adm.orders.filter(function(o){return o.status==='รอชำระเงิน'&&!o.noticeAt}).length)+' ออเดอร์';
+  $('rv-list').innerHTML=l.length?l.map(function(o){
+    var diff=o.noticeAmount!=null&&Number(o.noticeAmount)!==dueOf(o);
+    return '<div class="rv-item"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="amt">฿'+dueOf(o).toLocaleString()+'</span></div>'+
+      '<div>'+esc(o.name)+(o.group?' · '+esc(o.group):'')+' · '+esc(o.phone)+'</div>'+
+      '<div class="mut">'+(o.noticeAmount!=null?'ลูกค้าแจ้งโอน ฿'+Number(o.noticeAmount).toLocaleString()+(diff?' <b style="color:var(--bad)">(ไม่ตรงยอด)</b>':''):'ไม่ได้ระบุยอด')+(o.noticeTime?' · เวลา '+esc(o.noticeTime):'')+(o.slip?' · มีสลิป':' · ไม่มีสลิป')+'</div>'+
+      '<div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn sec" style="flex:1" onclick="openSlip(\''+o.orderNo+'\')">'+EYE+(o.slip?'ดูสลิป':'ดูรายละเอียด')+'</button>'+
+      '<button class="btn" style="flex:1" onclick="confirmPaid(\''+o.orderNo+'\')">ยืนยันว่าโอนแล้ว</button></div></div>';
+  }).join(''):'<div class="mut" style="margin-top:8px">ไม่มีรายการรอตรวจสอบ</div>';
+  updateBadge();
+}
+function slipId(u){var m=String(u||'').match(/\/d\/([^\/?#]+)/)||String(u||'').match(/[?&]id=([^&#]+)/);return m?m[1]:''}
+function openSlip(no){
+  var o=adm.orders.filter(function(x){return x.orderNo===no})[0];if(!o)return;
+  var id=slipId(o.slip),diff=o.noticeAmount!=null&&Number(o.noticeAmount)!==dueOf(o);
+  $('sv-body').innerHTML='<div style="margin:8px 0"><b>'+esc(o.orderNo)+'</b> · '+esc(o.name)+(o.group?' · '+esc(o.group):'')+'<div class="mut">'+esc(o.phone)+' · '+esc(stLbl(o.status))+'</div></div>'+
+    '<div class="rv-item" style="margin-top:0"><div class="row" style="justify-content:space-between"><span class="mut">ยอดที่ต้องโอน'+(Number(o.fee)>0?' (รวมค่าจัดส่ง ฿'+Number(o.fee)+')':'')+'</span><span class="amt">฿'+dueOf(o).toLocaleString()+'</span></div>'+
+    '<div class="row" style="justify-content:space-between"><span class="mut">ลูกค้าแจ้งโอน</span><span>'+(o.noticeAmount!=null?'<b'+(diff?' style="color:var(--bad)"':'')+'>฿'+Number(o.noticeAmount).toLocaleString()+'</b>'+(diff?' (ไม่ตรงยอด)':''):'ไม่ได้ระบุ')+'</span></div>'+
+    (o.noticeTime?'<div class="row" style="justify-content:space-between"><span class="mut">วันเวลาที่โอน</span><span>'+esc(o.noticeTime)+'</span></div>':'')+
+    (o.noticeNote?'<div class="mut" style="margin-top:4px">หมายเหตุ: '+esc(o.noticeNote)+'</div>':'')+'</div>'+
+    (o.slip?(id?'<div style="margin-top:10px"><img class="slipimg" src="https://drive.google.com/thumbnail?id='+esc(id)+'&sz=w1400" alt="สลิป" onerror="this.outerHTML=\'<div class=&quot;warnbox&quot;>แสดงรูปในหน้านี้ไม่ได้ กดปุ่มด้านล่างเพื่อเปิดในหน้าต่างใหม่</div>\'"></div>':'')+
+      '<a class="btn sec" style="display:block;text-align:center;text-decoration:none;margin-top:8px" href="'+esc(o.slip)+'" target="_blank" rel="noopener">เปิดสลิปในหน้าต่างใหม่</a>':'<div class="warnbox">ลูกค้าไม่ได้แนบสลิป ตรวจยอดจากรายการเดินบัญชีของร้าน</div>')+
+    (o.status==='รอชำระเงิน'?'<button class="btn full" onclick="confirmPaid(\''+o.orderNo+'\')">✅ ยืนยันว่าโอนแล้ว (เปลี่ยนเป็น "ชำระแล้ว")</button>'+
+      '<button class="btn sec" style="width:100%;margin-top:8px" onclick="requestSlip(\''+o.orderNo+'\')">ขอสลิปใหม่ / ไม่พบยอดโอน</button>':'');
+  $('sv').classList.add('on');document.body.style.overflow='hidden';
+}
+function closeSlip(){$('sv').classList.remove('on');document.body.style.overflow=''}
+function confirmPaid(no){
+  var o=adm.orders.filter(function(x){return x.orderNo===no})[0];if(!o)return;
+  askConfirm('ยืนยันว่าได้รับเงินออเดอร์ '+no+' ยอด ฿'+dueOf(o).toLocaleString()+' แล้ว ?',function(){
+    run('adminSetStatus',[ADMIN,no,'ชำระแล้ว'],function(){toast('ยืนยันการชำระเงิน '+no+' แล้ว');closeSlip();adminLoad()})});
+}
+function requestSlip(no){
+  askConfirm('ส่งข้อความให้ลูกค้าส่งสลิปใหม่ (ออเดอร์ '+no+') ? ลูกค้าจะเห็นข้อความในหน้าตรวจสอบ',function(){
+    run('adminRequestSlip',[ADMIN,no,''],function(){toast('ส่งข้อความถึงลูกค้าแล้ว');closeSlip();adminLoad()})});
+}
+function showNoPay(){$('ad-filter').value='_nopay';renderOrders();$('ad-orders').scrollIntoView({behavior:'smooth'})}
+function pollAdmin(){
+  run('adminGetData',[ADMIN],function(d){adm=d;var n=reviewList().length;if(lastReviewN>=0&&n>lastReviewN)toast('มีลูกค้าแจ้งโอนใหม่ '+(n-lastReviewN)+' รายการ');lastReviewN=n;renderReview()},null,function(){});
+  loadReports();
+}
 function setReport(id,st){run('adminSetReportStatus',[ADMIN,id,st],function(){loadReports()})}
 function delReport(id){askConfirm('ลบเรื่องนี้ใช่หรือไม่?',function(){run('adminDeleteReport',[ADMIN,id],function(){loadReports()})})}
-setInterval(function(){if(ADMIN)loadReports()},60000);
+setInterval(function(){if(ADMIN)pollAdmin()},60000);
 var PAID=['ชำระแล้ว','กำลังผลิต','พร้อมรับ','รับแล้ว'];
 function visProducts(){
   var used={};
@@ -968,7 +1078,7 @@ function renderAdmin(){
 }
 function renderOrders(){
   if(!adm)return; var f=$('ad-filter').value,q=$('ad-q').value.trim().toLowerCase();
-  var l=adm.orders.filter(function(o){return (!f||o.status===f)&&(!q||(o.orderNo+o.name+o.phone).toLowerCase().indexOf(q)>=0)});
+  var l=adm.orders.filter(function(o){return (!f||(f==='_review'?(o.status==='รอชำระเงิน'&&o.noticeAt):f==='_nopay'?(o.status==='รอชำระเงิน'&&!o.noticeAt):o.status===f))&&(!q||(o.orderNo+o.name+o.phone).toLowerCase().indexOf(q)>=0)});
   $('ad-orders').innerHTML=l.map(function(o){
     return '<div class="card"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="mut">'+esc(o.time)+'</span></div>'+
       '<div>'+esc(o.name)+' · '+esc(o.phone)+(o.group?' · '+esc(o.group):'')+'</div>'+itemsHtml(o,'admin')+
@@ -976,7 +1086,7 @@ function renderOrders(){
       (o.delivery?'<div class="mut">'+(o.delivery==='จัดส่ง'?'จัดส่ง +฿'+o.fee+' · '+esc(o.addr)+' · โทร '+esc(o.dphone):'รับด้วยตนเอง')+'</div>':'')+
       (o.note?'<div class="mut">หมายเหตุ: '+esc(o.note)+'</div>':'')+
       '<div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-top:6px"><span class="price">฿'+Number(o.total).toLocaleString()+'</span>'+
-      (o.slip?'<a href="'+esc(o.slip)+'" target="_blank">ดูสลิป</a>':'<span class="mut">ยังไม่มีสลิป</span>')+
+      ((o.slip||o.noticeAt||o.status==='รอชำระเงิน')?'<button class="btn'+(o.status==='รอชำระเงิน'&&(o.slip||o.noticeAt)?'':' sec')+'" style="padding:6px 12px;min-height:0;font-size:13px" onclick="openSlip(\''+o.orderNo+'\')">'+EYE+(o.slip?'ดูสลิป':o.noticeAt?'ดูการแจ้งโอน':'ตรวจสอบ')+'</button>':'<span class="mut">ยังไม่มีสลิป</span>')+
       '<select style="width:auto" onchange="setStatus(\''+o.orderNo+'\',this.value)">'+STATUSES.map(function(s){return '<option value="'+s+'"'+(s===o.status?' selected':'')+'>'+stLbl(s)+'</option>'}).join('')+'</select></div></div>';
   }).join('')||'<div class="card mut">ไม่มีออเดอร์</div>';
 }

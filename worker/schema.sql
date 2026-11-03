@@ -32,7 +32,12 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery      TEXT NOT NULL DEFAULT '', -- 'รับด้วยตนเอง' | 'จัดส่ง'
   fee           INTEGER NOT NULL DEFAULT 0,
   addr          TEXT NOT NULL DEFAULT '',
-  dphone        TEXT NOT NULL DEFAULT ''
+  dphone        TEXT NOT NULL DEFAULT '',
+  notice_at     TEXT NOT NULL DEFAULT '',   -- เวลาที่ลูกค้าส่งสลิป/แจ้งโอน (ว่าง = ยังไม่แจ้ง)
+  notice_amount INTEGER,                     -- ยอดที่ลูกค้าแจ้งว่าโอน
+  notice_time   TEXT NOT NULL DEFAULT '',   -- วันเวลาโอนที่ลูกค้าระบุ
+  notice_note   TEXT NOT NULL DEFAULT '',
+  admin_msg     TEXT NOT NULL DEFAULT ''    -- ข้อความจากแอดมินถึงลูกค้า (เช่น ขอสลิปใหม่)
 );
 CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(phone);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);

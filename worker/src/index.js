@@ -222,8 +222,34 @@ const API = {
     if (!o) fail('ไม่พบออเดอร์');
     if (!slip || !slip.base64) fail('ไม่พบไฟล์สลิป');
     const url = await uploadSlip(env, orderNo, slip);
-    await env.DB.prepare('UPDATE orders SET slip_url = ? WHERE order_no = ?').bind(url, orderNo).run();
+    await env.DB.prepare("UPDATE orders SET slip_url = ?, notice_at = ?, admin_msg = '' WHERE order_no = ?").bind(url, new Date().toISOString(), orderNo).run();
     return true;
+  },
+
+  /* ลูกค้าแจ้งโอนเงิน (แนบสลิปได้ ไม่บังคับ) พร้อมยอด/เวลาที่โอน */
+  async notifyPayment(env, orderNo, phone, d) {
+    d = d || {};
+    const o = await env.DB.prepare('SELECT status FROM orders WHERE order_no = ? AND phone = ?').bind(orderNo, digits(phone)).first();
+    if (!o) fail('ไม่พบออเดอร์');
+    if (o.status !== 'รอชำระเงิน') fail('แจ้งโอนได้เฉพาะออเดอร์ที่อยู่ในสถานะ "รอชำระเงิน"');
+    let amount = null;
+    if (d.amount !== undefined && d.amount !== null && String(d.amount).trim() !== '') {
+      amount = Math.round(Number(String(d.amount).replace(/,/g, '')));
+      if (!(amount >= 0) || amount > 10000000) fail('ยอดที่โอนไม่ถูกต้อง');
+    }
+    const time = String(d.time || '').trim().slice(0, 40);
+    const note = String(d.note || '').trim().slice(0, 300);
+    let slipUrl = null;
+    if (d.slip && d.slip.base64) slipUrl = await uploadSlip(env, orderNo, d.slip);
+    const now = new Date().toISOString();
+    if (slipUrl) {
+      await env.DB.prepare("UPDATE orders SET slip_url = ?, notice_at = ?, notice_amount = ?, notice_time = ?, notice_note = ?, admin_msg = '' WHERE order_no = ?")
+        .bind(slipUrl, now, amount, time, note, orderNo).run();
+    } else {
+      await env.DB.prepare("UPDATE orders SET notice_at = ?, notice_amount = ?, notice_time = ?, notice_note = ?, admin_msg = '' WHERE order_no = ?")
+        .bind(now, amount, time, note, orderNo).run();
+    }
+    return { hasSlip: !!slipUrl };
   },
 
   async trackOrders(env, phone) {
@@ -235,6 +261,8 @@ const API = {
         orderNo: r.order_no, time: fmtLong(r.created_at), items: r.items_text, total: r.total, status: r.status,
         hasSlip: !!r.slip_url, ringSize: r.ring_size || '', delivery: r.delivery || '', fee: r.fee || 0,
         addr: r.addr || '', dphone: r.dphone || '',
+        noticeAt: r.notice_at || '', noticeAmount: r.notice_amount === null || r.notice_amount === undefined ? null : r.notice_amount,
+        noticeTime: r.notice_time || '', adminMsg: r.admin_msg || '',
         lines: (() => { try { return JSON.parse(r.items_json).map((i) => ({ id: i.id, opt: i.opt, qty: i.qty })); } catch (e) { return []; } })(),
       })),
       payInfo: await setting(env, 'PAY_INFO', ''),
@@ -341,6 +369,8 @@ const API = {
       orders: results.map((r) => ({
         orderNo: r.order_no, time: fmtShort(r.created_at), name: r.name, phone: r.phone, group: r.grp,
         items: r.items_text, total: r.total, status: r.status, slip: r.slip_url, note: r.note, json: r.items_json,
+        noticeAt: r.notice_at || '', noticeAmount: r.notice_amount === null || r.notice_amount === undefined ? null : r.notice_amount,
+        noticeTime: r.notice_time || '', noticeNote: r.notice_note || '', adminMsg: r.admin_msg || '',
         ringSize: r.ring_size || '', delivery: r.delivery || '', fee: r.fee || 0, addr: r.addr || '', dphone: r.dphone || '',
       })),
       products: await readProducts(env),
@@ -433,6 +463,14 @@ const API = {
     const o = await env.DB.prepare('SELECT * FROM orders WHERE order_no = ?').bind(orderNo).first();
     if (!o) fail('ไม่พบออเดอร์');
     return changeItemOption(env, o, Number(idx), opt, false);
+  },
+
+  async adminRequestSlip(env, pass, orderNo, msg) {
+    checkAdmin(env, pass);
+    const text = String(msg || '').trim().slice(0, 300) || 'ไม่พบยอดโอนหรือสลิปไม่ชัดเจน กรุณาส่งสลิปใหม่ หรือติดต่อแอดมิน';
+    const r = await env.DB.prepare("UPDATE orders SET admin_msg = ?, notice_at = '' WHERE order_no = ? AND status = 'รอชำระเงิน'").bind(text, orderNo).run();
+    if (!r.meta.changes) fail('ไม่พบออเดอร์ที่รอชำระเงิน');
+    return true;
   },
 
   async adminSetRingSize(env, pass, orderNo, size) {
