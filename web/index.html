@@ -237,6 +237,20 @@ a{color:#8db4ff}
       <div id="ad-sum"></div>
     </div>
     <div class="card">
+      <b>📦 รายชื่อจัดส่ง / แพ็คของ</b>
+      <div class="mut" style="margin-top:2px">รายชื่อผู้รับ ที่อยู่ เบอร์โทร และรายการสินค้าในแต่ละกล่อง (แยกจากรายงานส่งร้านผลิต)</div>
+      <div class="row" style="margin-top:8px">
+        <select id="sh-scope" onchange="renderShipInfo()"><option value="ship">จัดส่งพัสดุ</option><option value="pick">รับด้วยตนเอง</option></select>
+        <select id="sh-pay" onchange="renderShipInfo()"><option value="paid">เฉพาะที่ชำระแล้ว</option><option value="all">ทุกออเดอร์ (ไม่ยกเลิก)</option></select>
+      </div>
+      <div class="mut" id="sh-info" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px;flex-wrap:wrap">
+        <button class="btn sec" style="flex:1;min-width:100px" onclick="printShip()">พิมพ์ / PDF</button>
+        <button class="btn sec" style="flex:1;min-width:100px" onclick="downloadShip()">ไฟล์ Word</button>
+        <button class="btn sec" style="flex:1;min-width:100px" onclick="csvShip()">ไฟล์ CSV</button>
+      </div>
+    </div>
+    <div class="card">
       <b>โหมดระบบ</b> <span class="mut">ปัจจุบัน: <b id="ad-modeLbl" style="color:var(--gold)"></b></span>
       <div class="row" style="margin-top:8px"><select id="ad-mode">
         <option value="survey">📋 สำรวจ</option><option value="pay">💳 เปิดชำระเงิน</option>
@@ -374,7 +388,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='26';
+var VER='27';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -833,7 +847,7 @@ function updateBadge(){
 function renderReview(){
   var l=reviewList();
   $('rv-count').textContent=l.length+' รายการ';
-  renderPayProgress();
+  renderPayProgress();renderShipInfo();
   $('rv-nopay').textContent='รอชำระเงินแต่ยังไม่แจ้ง: '+(adm.orders.filter(function(o){return o.status==='รอชำระเงิน'&&!o.noticeAt}).length)+' ออเดอร์';
   $('rv-list').innerHTML=l.length?l.map(function(o){
     var diff=o.noticeAmount!=null&&Number(o.noticeAmount)!==dueOf(o);
@@ -1004,6 +1018,65 @@ function rpt(ords){
   return body;
 }
 var RPT_CSS='body{font-family:"TH SarabunPSK","TH Sarabun New",Sarabun,sans-serif;font-size:16pt;color:#000}h1{font-size:22pt;margin:0 0 4px}h2{font-size:18pt;margin:18px 0 6px;border-bottom:2px solid #1c3b8a;color:#1c3b8a}h3{font-size:16pt;margin:12px 0 4px}.s{font-size:13pt;color:#333}table.t{border-collapse:collapse;width:100%;margin:4px 0 8px}table.t th,table.t td{border:1px solid #444;padding:3px 8px;font-size:14pt;text-align:left}table.t th{background:#e8eefc}table.t .r{text-align:right}table.t tr.f td{background:#f3f3f3}@page{size:A4;margin:14mm}';
+/* ---------- รายชื่อจัดส่ง / แพ็คของ ---------- */
+function shipScope(){return $('sh-scope').value}
+function shipOrders(all){
+  var scope=shipScope(),onlyPaid=$('sh-pay').value==='paid';
+  return adm.orders.filter(function(o){
+    if(o.status==='ยกเลิก')return false;
+    var isShip=o.delivery==='จัดส่ง';
+    if(scope==='ship'&&!isShip)return false;
+    if(scope==='pick'&&isShip)return false;
+    if(onlyPaid&&!all&&PAID.indexOf(o.status)<0)return false;
+    return true;
+  }).sort(function(a,b){return a.orderNo<b.orderNo?-1:1});
+}
+function shortName(n){return String(n||'').replace(/\s*\(.*\)\s*$/,'').trim()}
+function itemLines(o){
+  var items=[];try{items=JSON.parse(o.json)}catch(e){}
+  return items.map(function(it){return shortName(it.name)+(it.opt?' ['+it.opt+']':'')+' ×'+it.qty});
+}
+function renderShipInfo(){
+  if(!adm||!$('sh-info'))return;
+  var scope=shipScope(),l=shipOrders(false),a=shipOrders(true),pcs=0,fee=0,miss=0;
+  l.forEach(function(o){try{JSON.parse(o.json).forEach(function(i){pcs+=i.qty})}catch(e){}fee+=Number(o.fee)||0;if(scope==='ship'&&(!o.addr||!o.dphone))miss++});
+  $('sh-info').innerHTML=(scope==='ship'?'จัดส่งพัสดุ':'รับด้วยตนเอง')+': <b>'+l.length+' ออเดอร์</b> · '+pcs+' ชิ้น'+(scope==='ship'?' · ค่าจัดส่งรวม ฿'+fee.toLocaleString():'')+
+    ' <span class="mut">(ทั้งหมดที่ยังไม่ยกเลิก '+a.length+')</span>'+(miss?'<div style="color:var(--bad)">⚠ ข้อมูลจัดส่งไม่ครบ '+miss+' ออเดอร์</div>':'')+
+    ($('sh-scope').value==='pick'?'<div class="mut">รวมออเดอร์ที่ยังไม่ได้เลือกวิธีรับสินค้า (ถือเป็นรับด้วยตนเอง)</div>':'');
+}
+function shipHtml(){
+  var l=shipOrders(false),scope=shipScope(),ship=scope==='ship';
+  var date=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  var rows=l.map(function(o,i){
+    var items=itemLines(o).map(function(t){return '<div>'+esc(t)+'</div>'}).join('');
+    return '<tr><td class="c">'+(i+1)+'</td><td>'+esc(o.orderNo)+'</td><td><b>'+esc(o.name)+'</b>'+(o.group?'<div class="s">'+esc(o.group)+'</div>':'')+'</td>'+
+      (ship?'<td>'+esc(o.addr||'⚠ ไม่มีที่อยู่')+'</td><td>'+esc(o.dphone||o.phone)+'</td>':'<td>'+esc(o.phone)+'</td>')+
+      '<td>'+items+'</td><td>'+esc(PAID.indexOf(o.status)>=0?'ชำระแล้ว':o.status)+'</td>'+(ship?'<td class="r">฿'+Number(o.fee||0).toLocaleString()+'</td>':'<td class="c">☐</td>')+'</tr>';
+  }).join('');
+  var head=ship?['ที่','เลขที่ออเดอร์','ชื่อผู้รับ','ที่อยู่จัดส่ง','เบอร์โทร','รายการสินค้า','ชำระเงิน','ค่าส่ง']:['ที่','เลขที่ออเดอร์','ชื่อ','เบอร์โทร','รายการสินค้า','ชำระเงิน','รับของแล้ว'];
+  return '<h1>'+(ship?'รายชื่อจัดส่งพัสดุ (สำหรับแพ็คของ)':'รายชื่อรับของด้วยตนเอง')+'</h1><div class="s">แผนกวิชาช่างไฟฟ้ากำลัง วิทยาลัยการอาชีพนครปฐม · วันที่ '+esc(date)+' · '+l.length+' ออเดอร์ ('+($('sh-pay').value==='paid'?'เฉพาะที่ชำระแล้ว':'ทุกออเดอร์ที่ไม่ยกเลิก')+')</div>'+
+    '<table class="t"><tr>'+head.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr>'+(rows||'<tr><td colspan="'+head.length+'" class="c">ไม่มีรายการ</td></tr>')+'</table>'+
+    '<div class="s">เอกสารนี้มีข้อมูลส่วนบุคคล โปรดเก็บรักษาและทำลายเมื่อใช้งานเสร็จ</div>';
+}
+var SHIP_CSS=RPT_CSS.replace('size:A4','size:A4 landscape')+'table.t td{vertical-align:top;font-size:13pt}table.t td.c{text-align:center}.s{font-size:12pt}';
+function printShip(){
+  var w=window.open('','_blank');if(!w)return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่');
+  w.document.write('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายชื่อจัดส่ง</title><style>'+SHIP_CSS+'</style></head><body>'+shipHtml()+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print()},400)}</scr'+'ipt></body></html>');
+  w.document.close();
+}
+function dateStamp(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function downloadShip(){
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>รายชื่อจัดส่ง</title><style>'+SHIP_CSS+'</style></head><body>'+shipHtml()+'</body></html>';
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+html],{type:'application/msword'}));
+  a.download=(shipScope()==='ship'?'รายชื่อจัดส่ง-':'รายชื่อรับเอง-')+dateStamp()+'.doc';a.click();
+}
+function csvShip(){
+  var l=shipOrders(false);
+  var rows=[['เลขที่ออเดอร์','ชื่อผู้สั่ง/ผู้รับ','รุ่น','เบอร์โทรผู้สั่ง','เบอร์โทรจัดส่ง','ที่อยู่จัดส่ง','รายการสินค้า','ยอดสินค้า','ค่าจัดส่ง','ยอดรวมที่ต้องโอน','สถานะ']].concat(l.map(function(o){
+    return [o.orderNo,o.name,o.group||'',o.phone,o.dphone||'',(o.addr||'').replace(/\n/g,' '),itemLines(o).join('; '),o.total,o.fee||0,Number(o.total||0)+Number(o.fee||0),o.status]}));
+  var csv='\ufeff'+rows.map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=(shipScope()==='ship'?'รายชื่อจัดส่ง-':'รายชื่อรับเอง-')+dateStamp()+'.csv';a.click();
+}
 function printReport(){
   var w=window.open('','_blank');if(!w)return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่');
   w.document.write('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>สรุปรายการสั่งทำ</title><style>'+RPT_CSS+'</style></head><body>'+rpt(sumOrders())+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print()},400)}</scr'+'ipt></body></html>');
