@@ -137,6 +137,15 @@ a{color:#8db4ff}
 .sz-tabs{display:flex;gap:8px;margin:10px 0}
 .sz-tabs button{flex:1}
 .sz-tabs button.on{background:linear-gradient(135deg,#2f7bff,#1c56d6);color:#fff}
+.pg{display:flex;height:14px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.08);margin:10px 0}
+.pg i{display:block;height:100%}
+.pgrow{display:flex;align-items:center;gap:8px;padding:10px 4px;border-top:1px solid var(--bd);cursor:pointer}
+.pgrow .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.pgrow .nm{flex:1;min-width:0}
+.pgrow .nm small{display:block;color:var(--mut);font-size:12px}
+.pgrow .v{text-align:right}
+.pgrow .v b{font-size:18px}
+.pgrow .v small{display:block;color:var(--gold);font-size:13px}
 .rv-item{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-top:10px}
 .rv-item .amt{color:var(--gold);font-weight:700;font-size:18px}
 .slipimg{width:100%;max-height:55vh;object-fit:contain;border-radius:12px;background:rgba(255,255,255,.05);display:block}
@@ -191,6 +200,12 @@ a{color:#8db4ff}
   <div id="ad-body" class="hide">
     <div class="row" style="justify-content:flex-end;margin-bottom:8px"><button class="btn sec" onclick="adminLogout()">ออกจากระบบ</button></div>
     <div class="stat" id="ad-stat"></div>
+    <div class="card" id="pg-card">
+      <div class="row" style="justify-content:space-between"><b>💰 ความคืบหน้าการชำระเงิน</b><button class="btn sec" style="padding:6px 12px;min-height:0;font-size:13px" onclick="copyPayText()">คัดลอกสรุป</button></div>
+      <div class="mut" id="pg-sub" style="margin-top:2px"></div>
+      <div class="pg" id="pg-bar"></div>
+      <div id="pg-rows"></div>
+    </div>
     <div class="card" id="rv-card">
       <div class="row" style="justify-content:space-between"><b>💳 รอตรวจสอบการชำระเงิน</b><span class="tag" id="rv-count">0</span></div>
       <div class="mut" style="margin-top:4px">ลูกค้าที่แนบสลิปหรือแจ้งโอนแล้ว กด "ดูสลิป" เช็กยอดแล้วกดยืนยันว่าโอนแล้ว</div>
@@ -359,7 +374,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='25';
+var VER='26';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -694,7 +709,7 @@ function adminLogin(p,auto){
     ADMIN=p;STATUSES=r.statuses;
     if(!auto&&$('pin-rem').checked){try{localStorage.setItem('sv_pin',p)}catch(e){}}
     $('ad-login').classList.add('hide');$('ad-body').classList.remove('hide');
-    $('ad-filter').innerHTML='<option value="">ทุกสถานะ</option><option value="_review">💳 รอตรวจสลิป (แจ้งโอนแล้ว)</option><option value="_nopay">⏳ รอชำระเงิน (ยังไม่แจ้ง)</option>'+STATUSES.map(function(s){return '<option value="'+s+'">'+stLbl(s)+'</option>'}).join('');
+    $('ad-filter').innerHTML='<option value="">ทุกสถานะ</option><option value="_paid">✅ โอนแล้ว (ยืนยันแล้ว)</option><option value="_review">💳 รอตรวจสลิป (แจ้งโอนแล้ว)</option><option value="_nopay">⏳ รอชำระเงิน (ยังไม่แจ้ง)</option>'+STATUSES.map(function(s){return '<option value="'+s+'">'+stLbl(s)+'</option>'}).join('');
     adminLoad();
   },null,function(m){
     if(auto){try{localStorage.removeItem('sv_pin')}catch(e){}}
@@ -769,6 +784,48 @@ var lastReviewN=-1;
 var EYE='<svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align:-4px;margin-right:4px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 function dueOf(o){return Number(o.total||0)+Number(o.fee||0)}
 function reviewList(){return (adm?adm.orders:[]).filter(function(o){return o.status==='รอชำระเงิน'&&o.noticeAt})}
+function payStats(orders){
+  var live=orders.filter(function(o){return o.status!=='ยกเลิก'});
+  function grp(fn){var l=live.filter(fn),ph={},amt=0;l.forEach(function(o){ph[o.phone]=1;amt+=dueOf(o)});return {n:l.length,people:Object.keys(ph).length,amt:amt}}
+  return {
+    all:grp(function(){return true}),
+    paid:grp(function(o){return PAID.indexOf(o.status)>=0}),
+    review:grp(function(o){return o.status==='รอชำระเงิน'&&!!o.noticeAt}),
+    unpaid:grp(function(o){return o.status==='รอชำระเงิน'&&!o.noticeAt}),
+    survey:grp(function(o){return o.status==='สำรวจ'})
+  };
+}
+function renderPayProgress(){
+  if(!adm)return;var s=payStats(adm.orders),t=s.all.n||1;
+  var pct=function(n){return Math.round(n*100/t)};
+  $('pg-sub').textContent='ออเดอร์ทั้งหมด '+s.all.n+' (ไม่รวมยกเลิก) · '+s.all.people+' คน · รวม ฿'+s.all.amt.toLocaleString();
+  $('pg-bar').innerHTML='<i style="width:'+(s.paid.n*100/t)+'%;background:#3ddc84"></i><i style="width:'+(s.review.n*100/t)+'%;background:#f5b82e"></i><i style="width:'+(s.survey.n*100/t)+'%;background:#5f7fb8"></i><i style="width:'+(s.unpaid.n*100/t)+'%;background:#ff6b6b"></i>';
+  function row(col,name,sub,g,filter,show){
+    if(!show)return '';
+    return '<div class="pgrow" onclick="goFilter(\''+filter+'\')"><span class="dot" style="background:'+col+'"></span><div class="nm"><b>'+name+'</b><small>'+sub+'</small></div>'+
+      '<div class="v"><b>'+g.n+' ออเดอร์</b><small>'+g.people+' คน · ฿'+g.amt.toLocaleString()+' · '+pct(g.n)+'%</small></div></div>';
+  }
+  $('pg-rows').innerHTML=
+    row('#3ddc84','โอนแล้ว (แอดมินยืนยันแล้ว)','สถานะ ชำระแล้ว ขึ้นไป',s.paid,'_paid',true)+
+    row('#f5b82e','รอตรวจสลิป','ลูกค้าแจ้งโอน/แนบสลิปแล้ว รอแอดมินยืนยัน',s.review,'_review',true)+
+    row('#ff6b6b','ยังไม่โอน / ยังไม่แจ้ง','รอชำระเงิน ยังไม่แจ้งโอน',s.unpaid,'_nopay',true)+
+    row('#5f7fb8','ยังอยู่ช่วงสำรวจ','ยังไม่ถึงขั้นชำระเงิน',s.survey,'สำรวจ',s.survey.n>0);
+}
+function goFilter(v){$('ad-filter').value=v;renderOrders();$('ad-orders').scrollIntoView({behavior:'smooth'})}
+function payText(){
+  var s=payStats(adm.orders),d=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  var L=['สรุปการชำระเงิน '+d,'ออเดอร์ทั้งหมด '+s.all.n+' ออเดอร์ ('+s.all.people+' คน) ยอดรวม ฿'+s.all.amt.toLocaleString(),'',
+    '✅ โอนแล้ว (ยืนยันแล้ว): '+s.paid.n+' ออเดอร์ / '+s.paid.people+' คน / ฿'+s.paid.amt.toLocaleString(),
+    '💳 รอตรวจสลิป: '+s.review.n+' ออเดอร์ / '+s.review.people+' คน / ฿'+s.review.amt.toLocaleString(),
+    '⏳ ยังไม่โอน/ยังไม่แจ้ง: '+s.unpaid.n+' ออเดอร์ / '+s.unpaid.people+' คน / ฿'+s.unpaid.amt.toLocaleString()];
+  if(s.survey.n)L.push('📋 ยังอยู่ช่วงสำรวจ: '+s.survey.n+' ออเดอร์');
+  return L.join('\n');
+}
+function copyPayText(){
+  var t=payText();function ok(){toast('คัดลอกสรุปการชำระเงินแล้ว')}
+  function fb(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){toast('คัดลอกไม่ได้')}a.remove()}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+}
 function updateBadge(){
   var n=reports.filter(function(x){return x.status==='ใหม่'}).length+reviewList().length;
   var b=$('admBadge');b.textContent=n;b.classList.toggle('hide',!n);
@@ -776,6 +833,7 @@ function updateBadge(){
 function renderReview(){
   var l=reviewList();
   $('rv-count').textContent=l.length+' รายการ';
+  renderPayProgress();
   $('rv-nopay').textContent='รอชำระเงินแต่ยังไม่แจ้ง: '+(adm.orders.filter(function(o){return o.status==='รอชำระเงิน'&&!o.noticeAt}).length)+' ออเดอร์';
   $('rv-list').innerHTML=l.length?l.map(function(o){
     var diff=o.noticeAmount!=null&&Number(o.noticeAmount)!==dueOf(o);
@@ -1078,7 +1136,7 @@ function renderAdmin(){
 }
 function renderOrders(){
   if(!adm)return; var f=$('ad-filter').value,q=$('ad-q').value.trim().toLowerCase();
-  var l=adm.orders.filter(function(o){return (!f||(f==='_review'?(o.status==='รอชำระเงิน'&&o.noticeAt):f==='_nopay'?(o.status==='รอชำระเงิน'&&!o.noticeAt):o.status===f))&&(!q||(o.orderNo+o.name+o.phone).toLowerCase().indexOf(q)>=0)});
+  var l=adm.orders.filter(function(o){return (!f||(f==='_paid'?(PAID.indexOf(o.status)>=0):f==='_review'?(o.status==='รอชำระเงิน'&&o.noticeAt):f==='_nopay'?(o.status==='รอชำระเงิน'&&!o.noticeAt):o.status===f))&&(!q||(o.orderNo+o.name+o.phone).toLowerCase().indexOf(q)>=0)});
   $('ad-orders').innerHTML=l.map(function(o){
     return '<div class="card"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="mut">'+esc(o.time)+'</span></div>'+
       '<div>'+esc(o.name)+' · '+esc(o.phone)+(o.group?' · '+esc(o.group):'')+'</div>'+itemsHtml(o,'admin')+
