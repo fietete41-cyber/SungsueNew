@@ -177,8 +177,9 @@ a{color:#8db4ff}
 <!-- ========== ลูกค้า: ตรวจสอบ ========== -->
 <section id="v-track" class="hide">
   <div class="card">
-    <label>เบอร์โทรที่ใช้สั่ง</label>
-    <div class="row"><input id="tk-phone" inputmode="tel"><button class="btn" onclick="track()">ค้นหา</button></div>
+    <label>เบอร์โทร หรือ ชื่อ-นามสกุล ที่ใช้สั่ง</label>
+    <div class="row"><input id="tk-phone" placeholder="เบอร์โทร หรือ ชื่อ-นามสกุล" autocomplete="off"><button class="btn" onclick="track()">ค้นหา</button></div>
+    <div class="mut" style="margin-top:6px;font-size:13px">ค้นหาด้วยชื่อ ให้พิมพ์ชื่อ-นามสกุลเต็มตามที่ใช้สั่ง (ไม่ต้องใส่คำนำหน้าก็ได้)</div>
   </div>
   <div id="tk-list"></div>
 </section>
@@ -388,7 +389,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='27';
+var VER='28';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -570,19 +571,19 @@ function submit(){
   });
 }
 function track(){
-  run('trackOrders',[$('tk-phone').value],function(res){var l=res.orders;lastOrders=l;bank=res.bank;
-    $('tk-list').innerHTML=l.length?l.map(function(o,k){
+  run('trackOrders',[$('tk-phone').value],function(res){var l=res.orders;lastOrders=l;bank=res.bank;trackBy=res.by;
+    $('tk-list').innerHTML=(res.by==='name'&&l.length?'<div class="warnbox" style="margin:0 0 12px"><b>ค้นหาด้วยชื่อ:</b> ดูสถานะ ชำระเงิน และแจ้งโอนได้ ส่วนการยกเลิก / แก้ไขรายการ / เปลี่ยนที่อยู่จัดส่ง กรุณาค้นหาด้วยเบอร์โทรที่ใช้สั่ง</div>':'')+(l.length?l.map(function(o,k){
       var cls=o.status==='ยกเลิก'?'bad':(o.status==='ชำระแล้ว'||o.status==='พร้อมรับ'||o.status==='รับแล้ว'?'ok':'');
       return '<div class="card"><div class="row" style="justify-content:space-between"><b>'+esc(o.orderNo)+'</b><span class="tag '+cls+'">'+esc(stLbl(o.status))+'</span></div>'+
-        '<div class="mut">'+esc(o.time)+'</div>'+itemsHtml(o,'cust')+''+(o.ringSize?'<div class="mut">ขนาดแหวน: '+esc(o.ringSize)+'</div>':'')+'<div class="price">'+payTxt(o)+'</div>'+dlvBlock(o,k,res.shipFee)+
+        '<div class="mut">'+esc(o.time)+(o.phoneMask?' · เบอร์ '+esc(o.phoneMask):'')+'</div>'+itemsHtml(o,'cust')+''+(o.ringSize?'<div class="mut">ขนาดแหวน: '+esc(o.ringSize)+'</div>':'')+'<div class="price">'+payTxt(o)+'</div>'+dlvBlock(o,k,res.shipFee)+
         (o.status==='สำรวจ'?'<div class="mut" style="margin-top:6px">อยู่ระหว่างสำรวจ ยังไม่ต้องชำระเงิน</div>':'')+
-        (res.mode!=='closed'&&(o.status==='สำรวจ'||o.status==='รอชำระเงิน')?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="cancelMine(\''+o.orderNo+'\')">ยกเลิกออเดอร์นี้</button>':'')+
+        (res.by!=='name'&&res.mode!=='closed'&&(o.status==='สำรวจ'||o.status==='รอชำระเงิน')?'<button class="btn sec" style="width:100%;margin-top:8px" onclick="cancelMine(\''+o.orderNo+'\')">ยกเลิกออเดอร์นี้</button>':'')+
         (o.status==='ชำระแล้ว'||o.status==='กำลังผลิต'?'<div class="mut" style="margin-top:8px">ต้องการยกเลิกหรือแก้ไขมากกว่านี้ กรุณา <a href="#" onclick="openReport(\'contact\');return false">ติดต่อแอดมิน</a></div>':'')+
         (res.mode==='closed'&&(o.status==='สำรวจ'||o.status==='รอชำระเงิน')?'<div class="mut" style="margin-top:8px">ปิดรับแล้ว หากต้องการยกเลิกกรุณา <a href="#" onclick="openReport(\'contact\');return false">ติดต่อแอดมิน</a></div>':'')+
         (o.status==='รอชำระเงิน'&&o.adminMsg?'<div class="warnbox"><b>แอดมินแจ้ง:</b> '+esc(o.adminMsg)+'</div>':'')+
         (o.status==='รอชำระเงิน'&&o.noticeAt?'<div class="mut" style="margin-top:8px">✔ แจ้งโอนแล้ว'+(o.hasSlip?' (แนบสลิปแล้ว)':' (ยังไม่แนบสลิป)')+(o.noticeAmount!=null?' ยอด ฿'+Number(o.noticeAmount).toLocaleString():'')+' — รอแอดมินตรวจสอบ</div>':'')+
         (o.status==='รอชำระเงิน'?'<button class="btn full" onclick="openPay('+k+')">ชำระเงิน / ดูบัญชีโอน</button><button class="btn sec" style="width:100%;margin-top:8px" onclick="openNotice('+k+')">'+(o.noticeAt?'ส่งสลิป / แจ้งโอนอีกครั้ง':'แจ้งโอนเงิน / ส่งสลิป')+'</button>':'')+'</div>';
-    }).join(''):'<div class="card mut">ไม่พบออเดอร์</div>';
+    }).join(''):'<div class="card mut">ไม่พบออเดอร์ ลองค้นหาด้วยเบอร์โทร หรือพิมพ์ชื่อ-นามสกุลให้ตรงกับที่ใช้สั่ง</div>');
   });
 }
 var bank=null,lastOrders=[];
@@ -644,13 +645,13 @@ function sendNotice(){
   });
 }
 function closePay(){$('pm').classList.remove('on');document.body.style.overflow=''}
-var ordCache={},edCtx=null;
+var ordCache={},edCtx=null,trackBy='phone';
 function prodById(id){var l=(typeof shop!=='undefined'&&shop?shop.products:[]).concat(typeof adm!=='undefined'&&adm?adm.products:[]);for(var k=0;k<l.length;k++)if(l[k].id===id)return l[k];return null}
 function itemsHtml(o,who){
   var items=[];
   if(who==='admin'){try{items=JSON.parse(o.json)}catch(e){}}else items=o.lines||[];
   ordCache[who+o.orderNo]={items:items,status:o.status};
-  var ok=who==='admin'?o.status!=='ยกเลิก':['สำรวจ','รอชำระเงิน','ชำระแล้ว'].indexOf(o.status)>=0;
+  var ok=who==='admin'?o.status!=='ยกเลิก':(trackBy!=='name'&&['สำรวจ','รอชำระเงิน','ชำระแล้ว'].indexOf(o.status)>=0);
   return String(o.items).split('\n').map(function(t,j){
     var it=items[j],p=it&&prodById(it.id),can=ok&&p&&p.options.length;
     return '<div class="row" style="justify-content:space-between;align-items:flex-start;margin:4px 0"><span style="flex:1;min-width:0">'+esc(t)+'</span>'+
@@ -680,6 +681,7 @@ function payTxt(o){
 }
 function dlvBlock(o,k,fee){
   var ship=o.delivery==='จัดส่ง';
+  if(trackBy==='name')return o.delivery?'<div class="mut" style="margin-top:8px">การรับสินค้า: '+esc(o.delivery)+(ship?' (ที่อยู่ซ่อนไว้ ดูได้เมื่อค้นหาด้วยเบอร์โทร)':'')+'</div>':'';
   if(['รอชำระเงิน','ชำระแล้ว'].indexOf(o.status)<0)
     return o.delivery?'<div class="mut">การรับสินค้า: '+esc(o.delivery)+(ship?' · '+esc(o.addr)+' · โทร '+esc(o.dphone):'')+'</div>':'';
   return '<div style="margin-top:10px;padding:12px;border:1px solid var(--bd);border-radius:14px"><b>การรับสินค้า</b>'+
@@ -760,7 +762,7 @@ function openReport(kind){
   c.classList.toggle('hide',!(rpKind==='contact'&&tel));
   if(tel){c.href='tel:'+tel.replace(/[^0-9+]/g,'');c.textContent='โทรหาแอดมิน '+tel}
   if(!$('rp-name').value)$('rp-name').value=$('f-name').value||'';
-  if(!$('rp-phone').value)$('rp-phone').value=$('tk-phone').value||$('f-phone').value||'';
+  if(!$('rp-phone').value){var tv=$('tk-phone').value;$('rp-phone').value=(String(tv).replace(/\D/g,'').length>=9?tv:'')||$('f-phone').value||''}
   $('rp').classList.add('on');document.body.style.overflow='hidden';
 }
 function closeReport(){$('rp').classList.remove('on');document.body.style.overflow=''}

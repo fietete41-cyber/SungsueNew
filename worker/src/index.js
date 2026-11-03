@@ -32,6 +32,21 @@ const fail = (m) => { throw new UserError(m); };
 
 /* ---------- helpers ---------- */
 const digits = (s) => String(s || '').replace(/\D/g, '');
+/* ค้นหาด้วยชื่อ: ตัดคำนำหน้า/ช่องว่าง/จุด แล้วเทียบแบบตรงตัว */
+const NAME_PREFIX = /^(นางสาว|น\.ส\.|นาง|นาย|ด\.ช\.|ด\.ญ\.|ว่าที่ร้อยตรี|ว่าที่ร\.ต\.|ดร\.|ครู|อาจารย์|อ\.)/;
+function nameKey(s) {
+  let t = String(s || '').trim().replace(/\s+/g, '');
+  for (let i = 0; i < 2; i++) t = t.replace(NAME_PREFIX, '');
+  return t.replace(/[.\-]/g, '').toLowerCase();
+}
+const maskPhone = (p) => (String(p).length >= 9 ? String(p).slice(0, 3) + '-xxx-' + String(p).slice(-4) : '');
+function ownsOrder(o, ident) {
+  const p = digits(ident);
+  if (p.length >= 9) return o.phone === p;
+  const k = nameKey(ident);
+  return k.length >= 4 && nameKey(o.name) === k;
+}
+const needPhone = (ident) => { if (digits(ident).length < 9) fail('การยกเลิก / แก้ไข / เปลี่ยนที่อยู่จัดส่ง ต้องค้นหาด้วยเบอร์โทรที่ใช้สั่ง'); };
 const pad = (n) => String(n).padStart(2, '0');
 
 function bkk(iso) {
@@ -218,8 +233,8 @@ const API = {
   },
 
   async attachSlip(env, orderNo, phone, slip) {
-    const o = await env.DB.prepare('SELECT order_no FROM orders WHERE order_no = ? AND phone = ?').bind(orderNo, digits(phone)).first();
-    if (!o) fail('ไม่พบออเดอร์');
+    const o = await env.DB.prepare('SELECT order_no, name, phone FROM orders WHERE order_no = ?').bind(orderNo).first();
+    if (!o || !ownsOrder(o, phone)) fail('ไม่พบออเดอร์');
     if (!slip || !slip.base64) fail('ไม่พบไฟล์สลิป');
     const url = await uploadSlip(env, orderNo, slip);
     await env.DB.prepare("UPDATE orders SET slip_url = ?, notice_at = ?, admin_msg = '' WHERE order_no = ?").bind(url, new Date().toISOString(), orderNo).run();
@@ -229,8 +244,8 @@ const API = {
   /* ลูกค้าแจ้งโอนเงิน (แนบสลิปได้ ไม่บังคับ) พร้อมยอด/เวลาที่โอน */
   async notifyPayment(env, orderNo, phone, d) {
     d = d || {};
-    const o = await env.DB.prepare('SELECT status FROM orders WHERE order_no = ? AND phone = ?').bind(orderNo, digits(phone)).first();
-    if (!o) fail('ไม่พบออเดอร์');
+    const o = await env.DB.prepare('SELECT status, name, phone FROM orders WHERE order_no = ?').bind(orderNo).first();
+    if (!o || !ownsOrder(o, phone)) fail('ไม่พบออเดอร์');
     if (o.status !== 'รอชำระเงิน') fail('แจ้งโอนได้เฉพาะออเดอร์ที่อยู่ในสถานะ "รอชำระเงิน"');
     let amount = null;
     if (d.amount !== undefined && d.amount !== null && String(d.amount).trim() !== '') {
@@ -252,15 +267,26 @@ const API = {
     return { hasSlip: !!slipUrl };
   },
 
-  async trackOrders(env, phone) {
-    const p = digits(phone);
-    if (p.length < 9) fail('กรุณากรอกเบอร์โทร');
-    const { results } = await env.DB.prepare('SELECT * FROM orders WHERE phone = ? ORDER BY created_at DESC').bind(p).all();
+  async trackOrders(env, ident) {
+    const p = digits(ident);
+    let results, by;
+    if (p.length >= 9) {
+      results = (await env.DB.prepare('SELECT * FROM orders WHERE phone = ? ORDER BY created_at DESC').bind(p).all()).results;
+      by = 'phone';
+    } else {
+      const key = nameKey(ident);
+      if (key.length < 4) fail('กรุณากรอกเบอร์โทร หรือชื่อ-นามสกุลให้ครบ');
+      const all = (await env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC').all()).results;
+      results = all.filter((r) => nameKey(r.name) === key);
+      by = 'name';
+    }
     return {
+      by,
       orders: results.map((r) => ({
+        phoneMask: by === 'name' ? maskPhone(r.phone) : '',
         orderNo: r.order_no, time: fmtLong(r.created_at), items: r.items_text, total: r.total, status: r.status,
         hasSlip: !!r.slip_url, ringSize: r.ring_size || '', delivery: r.delivery || '', fee: r.fee || 0,
-        addr: r.addr || '', dphone: r.dphone || '',
+        addr: by === 'name' ? '' : r.addr || '', dphone: by === 'name' ? '' : r.dphone || '',
         noticeAt: r.notice_at || '', noticeAmount: r.notice_amount === null || r.notice_amount === undefined ? null : r.notice_amount,
         noticeTime: r.notice_time || '', adminMsg: r.admin_msg || '',
         lines: (() => { try { return JSON.parse(r.items_json).map((i) => ({ id: i.id, opt: i.opt, qty: i.qty })); } catch (e) { return []; } })(),
@@ -274,6 +300,7 @@ const API = {
   },
 
   async editMyOrderItem(env, orderNo, phone, idx, opt) {
+    needPhone(phone);
     const o = await env.DB.prepare('SELECT * FROM orders WHERE order_no = ? AND phone = ?').bind(orderNo, digits(phone)).first();
     if (!o) fail('ไม่พบออเดอร์');
     if (!['สำรวจ', 'รอชำระเงิน', 'ชำระแล้ว'].includes(o.status)) fail('แก้ไขไม่ได้แล้ว เพราะออเดอร์อยู่ในขั้นตอนผลิตหรือเสร็จสิ้น กรุณาติดต่อแอดมิน');
@@ -281,6 +308,7 @@ const API = {
   },
 
   async cancelMyOrder(env, orderNo, phone) {
+    needPhone(phone);
     const o = await env.DB.prepare('SELECT status, items_json, stock_deducted FROM orders WHERE order_no = ? AND phone = ?').bind(orderNo, digits(phone)).first();
     if (!o) fail('ไม่พบออเดอร์');
     if (o.status === 'ยกเลิก') fail('ออเดอร์นี้ถูกยกเลิกไปแล้ว');
@@ -299,6 +327,7 @@ const API = {
   },
 
   async setDelivery(env, orderNo, phone, d) {
+    needPhone(phone);
     d = d || {};
     const method = d.method === 'จัดส่ง' ? 'จัดส่ง' : 'รับด้วยตนเอง';
     const addr = String(d.addr || '').trim();
