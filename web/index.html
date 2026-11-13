@@ -207,6 +207,23 @@ a{color:#8db4ff}
       <div class="pg" id="pg-bar"></div>
       <div id="pg-rows"></div>
     </div>
+    <div class="card" id="dn-card">
+      <b>📣 รายชื่อคนยังไม่ชำระ (สำหรับทวงถาม)</b>
+      <div class="mut" style="margin-top:2px">รวมออเดอร์ของแต่ละคน เรียงตามชื่อ มีเบอร์โทร ยอดที่ต้องโอน และสถานะ</div>
+      <select id="dn-scope" onchange="renderDunInfo()" style="margin-top:8px">
+        <option value="nonotice">ยังไม่โอน / ยังไม่แจ้ง (ควรทวง)</option>
+        <option value="all">รอชำระเงินทั้งหมด (รวมที่แจ้งโอนแล้วรอตรวจ)</option>
+      </select>
+      <div class="mut" id="dn-info" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px;flex-wrap:wrap">
+        <button class="btn sec" style="flex:1;min-width:92px" onclick="dunImage()">รูปภาพ</button>
+        <button class="btn sec" style="flex:1;min-width:92px" onclick="dunCsv()">CSV</button>
+        <button class="btn sec" style="flex:1;min-width:92px" onclick="dunWord()">Word</button>
+        <button class="btn sec" style="flex:1;min-width:92px" onclick="dunPrint()">พิมพ์ / PDF</button>
+        <button class="btn sec" style="flex:1;min-width:92px" onclick="dunCopy()">คัดลอก</button>
+      </div>
+      <div class="mut" style="margin-top:6px;font-size:12px">เอกสารมีชื่อและเบอร์ลูกค้า ใช้ภายใน ไม่ควรโพสต์ในที่สาธารณะ</div>
+    </div>
     <div class="card" id="rv-card">
       <div class="row" style="justify-content:space-between"><b>💳 รอตรวจสอบการชำระเงิน</b><span class="tag" id="rv-count">0</span></div>
       <div class="mut" style="margin-top:4px">ลูกค้าที่แนบสลิปหรือแจ้งโอนแล้ว กด "ดูสลิป" เช็กยอดแล้วกดยืนยันว่าโอนแล้ว</div>
@@ -389,7 +406,7 @@ a{color:#8db4ff}
 </div></div>
 
 <script>
-var VER='28';
+var VER='29';
 // ตรวจเวอร์ชันล่าสุด (ข้ามแคชของเบราว์เซอร์) ถ้าเก่ากว่าให้โหลดหน้าใหม่อัตโนมัติ
 (function(){try{fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json()}).then(function(j){
   if(j&&j.v&&j.v!==VER&&location.search.indexOf('v='+j.v)<0)location.replace(location.pathname+'?v='+j.v)}).catch(function(){})}catch(e){}})();
@@ -849,7 +866,7 @@ function updateBadge(){
 function renderReview(){
   var l=reviewList();
   $('rv-count').textContent=l.length+' รายการ';
-  renderPayProgress();renderShipInfo();
+  renderPayProgress();renderShipInfo();renderDunInfo();
   $('rv-nopay').textContent='รอชำระเงินแต่ยังไม่แจ้ง: '+(adm.orders.filter(function(o){return o.status==='รอชำระเงิน'&&!o.noticeAt}).length)+' ออเดอร์';
   $('rv-list').innerHTML=l.length?l.map(function(o){
     var diff=o.noticeAmount!=null&&Number(o.noticeAmount)!==dueOf(o);
@@ -1061,6 +1078,90 @@ function shipHtml(){
     '<div class="s">เอกสารนี้มีข้อมูลส่วนบุคคล โปรดเก็บรักษาและทำลายเมื่อใช้งานเสร็จ</div>';
 }
 var SHIP_CSS=RPT_CSS.replace('size:A4','size:A4 landscape')+'table.t td{vertical-align:top;font-size:13pt}table.t td.c{text-align:center}.s{font-size:12pt}';
+/* ---------- รายชื่อคนยังไม่ชำระ (ทวงถาม) ---------- */
+function dunRows(){
+  var scope=$('dn-scope').value,by={};
+  adm.orders.forEach(function(o){
+    if(o.status!=='รอชำระเงิน')return;
+    if(scope==='nonotice'&&o.noticeAt)return;
+    var k=o.phone||o.name,p=by[k]||(by[k]={name:o.name,group:'',phone:o.phone,orders:[],items:[],amt:0,notified:false,delivery:false});
+    if(!p.group&&o.group)p.group=o.group;
+    p.orders.push(o.orderNo);p.amt+=Number(o.total||0)+Number(o.fee||0);if(o.noticeAt)p.notified=true;if(o.delivery==='จัดส่ง')p.delivery=true;
+    itemLines(o).forEach(function(t){p.items.push(t)});
+  });
+  return Object.keys(by).map(function(k){return by[k]}).sort(function(a,b){return String(a.name).replace(/^(นางสาว|นาง|นาย|น\.ส\.)\s*/,'').localeCompare(String(b.name).replace(/^(นางสาว|นาง|นาย|น\.ส\.)\s*/,''),'th')});
+}
+function dunStat(r){return r.notified?'แจ้งโอนแล้ว รอตรวจ':'ยังไม่โอน / ยังไม่แจ้ง'}
+function fmtPhone(p){p=String(p||'');return p.length===10?p.slice(0,3)+'-'+p.slice(3,6)+'-'+p.slice(6):p}
+function renderDunInfo(){
+  if(!adm||!$('dn-info'))return;
+  var l=dunRows(),amt=0,ord=0;l.forEach(function(r){amt+=r.amt;ord+=r.orders.length});
+  $('dn-info').innerHTML='<b>'+l.length+' คน</b> · '+ord+' ออเดอร์ · ยอดค้างรวม <b style="color:var(--gold)">฿'+amt.toLocaleString()+'</b>';
+}
+function dunDate(){return new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'})}
+function dunTitle(){return $('dn-scope').value==='all'?'รายชื่อคนที่ยังไม่ชำระเงิน (รวมที่แจ้งโอนแล้วรอตรวจ)':'รายชื่อคนที่ยังไม่โอน / ยังไม่แจ้งโอน'}
+function dunHtml(){
+  var l=dunRows(),amt=0;l.forEach(function(r){amt+=r.amt});
+  var rows=l.map(function(r,i){return '<tr><td class="c">'+(i+1)+'</td><td><b>'+esc(r.name)+'</b></td><td>'+esc(r.group||'-')+'</td><td>'+esc(fmtPhone(r.phone))+'</td><td>'+esc(r.orders.join(', '))+'</td><td>'+r.items.map(function(t){return '<div>'+esc(t)+'</div>'}).join('')+'</td><td class="r"><b>฿'+r.amt.toLocaleString()+'</b></td><td>'+esc(dunStat(r))+'</td><td class="c">☐</td></tr>'}).join('');
+  return '<h1>'+dunTitle()+'</h1><div class="s">สั่งจองของที่ระลึก 35 ปี แผนกวิชาช่างไฟฟ้ากำลัง วิทยาลัยการอาชีพนครปฐม · ข้อมูล ณ วันที่ '+esc(dunDate())+' · '+l.length+' คน ยอดค้างรวม ฿'+amt.toLocaleString()+'</div>'+
+    '<table class="t"><tr><th>ที่</th><th>ชื่อ</th><th>รุ่น</th><th>เบอร์โทร</th><th>เลขที่ออเดอร์</th><th>รายการสินค้า</th><th>ยอดที่ต้องโอน</th><th>สถานะ</th><th>ทวงแล้ว</th></tr>'+(rows||'<tr><td colspan="9" class="c">ไม่มีรายการ</td></tr>')+
+    '<tr class="f"><td colspan="6" class="r"><b>รวม</b></td><td class="r"><b>฿'+amt.toLocaleString()+'</b></td><td colspan="2"></td></tr></table>'+
+    '<div class="s">เอกสารนี้มีข้อมูลส่วนบุคคล ใช้เพื่อติดตามการชำระเงินภายในเท่านั้น</div>';
+}
+function dunPrint(){
+  var w=window.open('','_blank');if(!w)return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่');
+  w.document.write('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายชื่อคนยังไม่ชำระ</title><style>'+SHIP_CSS+'</style></head><body>'+dunHtml()+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print()},400)}</scr'+'ipt></body></html>');
+  w.document.close();
+}
+function dunWord(){
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>รายชื่อคนยังไม่ชำระ</title><style>'+SHIP_CSS+'</style></head><body>'+dunHtml()+'</body></html>';
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+html],{type:'application/msword'}));a.download='รายชื่อคนยังไม่ชำระ-'+dateStamp()+'.doc';a.click();
+}
+function dunCsv(){
+  var rows=[['ลำดับ','ชื่อ','รุ่น','เบอร์โทร','จำนวนออเดอร์','เลขที่ออเดอร์','รายการสินค้า','ยอดที่ต้องโอน','สถานะ','จัดส่ง']].concat(dunRows().map(function(r,i){
+    return [i+1,r.name,r.group||'',r.phone,r.orders.length,r.orders.join(' '),r.items.join('; '),r.amt,dunStat(r),r.delivery?'จัดส่ง':'']}));
+  var csv='\ufeff'+rows.map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='รายชื่อคนยังไม่ชำระ-'+dateStamp()+'.csv';a.click();
+}
+function dunText(){
+  var l=dunRows(),amt=0;l.forEach(function(r){amt+=r.amt});
+  return [dunTitle(),'ข้อมูล ณ วันที่ '+dunDate()+' · '+l.length+' คน ยอดค้างรวม ฿'+amt.toLocaleString(),''].concat(l.map(function(r,i){
+    return (i+1)+'. '+r.name+(r.group?' ('+r.group+')':'')+' '+fmtPhone(r.phone)+' — ฿'+r.amt.toLocaleString()+(r.notified?' [แจ้งโอนแล้ว รอตรวจ]':'')})).join('\n');
+}
+function dunCopy(){
+  var t=dunText();function ok(){toast('คัดลอกรายชื่อแล้ว')}
+  function fb(){var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){toast('คัดลอกไม่ได้')}a.remove()}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+}
+function dunImage(){
+  var l=dunRows();if(!l.length)return toast('ไม่มีรายชื่อให้ส่งออก');
+  var amt=0;l.forEach(function(r){amt+=r.amt});
+  var W=1240,P=36,RH=50,HEAD=170,cols=[{t:'ที่',x:P,w:60,a:'c'},{t:'ชื่อ',x:P+60,w:370},{t:'รุ่น',x:P+430,w:170},{t:'เบอร์โทร',x:P+600,w:190},{t:'ยอดที่ต้องโอน',x:P+790,w:170,a:'r'},{t:'สถานะ',x:P+980,w:200}];
+  var H=HEAD+l.length*RH+RH+60,cv=document.createElement('canvas');cv.width=W;cv.height=H;var g=cv.getContext('2d');
+  function draw(){
+    g.fillStyle='#ffffff';g.fillRect(0,0,W,H);
+    g.fillStyle='#10245e';g.fillRect(0,0,W,110);
+    g.fillStyle='#fff';g.font='700 40px Sarabun,Tahoma,sans-serif';g.textBaseline='middle';g.textAlign='left';g.fillText(dunTitle(),P,42);
+    g.font='400 26px Sarabun,Tahoma,sans-serif';g.fillStyle='#d6e2ff';g.fillText('สั่งจองของที่ระลึก 35 ปี ช่างไฟฟ้ากำลัง วิทยาลัยการอาชีพนครปฐม · ข้อมูล ณ วันที่ '+dunDate(),P,84);
+    g.fillStyle='#1c3b8a';g.font='700 30px Sarabun,Tahoma,sans-serif';g.fillText(l.length+' คน · ยอดค้างรวม ฿'+amt.toLocaleString(),P,138);
+    var y=HEAD-8;g.fillStyle='#e8eefc';g.fillRect(P-12,y,W-2*P+24,RH);g.fillStyle='#10245e';g.font='700 26px Sarabun,Tahoma,sans-serif';
+    cols.forEach(function(c){g.textAlign=c.a==='r'?'right':c.a==='c'?'center':'left';g.fillText(c.t,c.a==='r'?c.x+c.w:c.a==='c'?c.x+c.w/2:c.x,y+RH/2)});
+    l.forEach(function(r,i){
+      var yy=y+RH*(i+1);if(i%2)g.fillStyle='#f6f8fd',g.fillRect(P-12,yy,W-2*P+24,RH);
+      g.strokeStyle='#e1e6f2';g.beginPath();g.moveTo(P-12,yy+RH);g.lineTo(W-P+12,yy+RH);g.stroke();
+      g.fillStyle='#111';g.font='400 26px Sarabun,Tahoma,sans-serif';
+      var vals=[String(i+1),r.name,r.group||'-',fmtPhone(r.phone),'฿'+r.amt.toLocaleString(),r.notified?'แจ้งโอนแล้ว (รอตรวจ)':'ยังไม่โอน'];
+      cols.forEach(function(c,k){var s=vals[k];while(g.measureText(s).width>c.w-8&&s.length>3)s=s.slice(0,-2);if(s!==vals[k])s+='…';
+        g.font=(k===4?'700 ':'400 ')+'26px Sarabun,Tahoma,sans-serif';g.fillStyle=k===5?(r.notified?'#b57d00':'#c42b2b'):'#111';
+        g.textAlign=c.a==='r'?'right':c.a==='c'?'center':'left';g.fillText(s,c.a==='r'?c.x+c.w:c.a==='c'?c.x+c.w/2:c.x,yy+RH/2)});
+    });
+    var ty=y+RH*(l.length+1);g.fillStyle='#e8eefc';g.fillRect(P-12,ty,W-2*P+24,RH);g.fillStyle='#10245e';g.font='700 28px Sarabun,Tahoma,sans-serif';
+    g.textAlign='right';g.fillText('รวม ฿'+amt.toLocaleString(),cols[4].x+cols[4].w,ty+RH/2);g.textAlign='left';g.fillText('รวม '+l.length+' คน',P+60,ty+RH/2);
+    g.font='400 22px Sarabun,Tahoma,sans-serif';g.fillStyle='#777';g.fillText('เอกสารนี้มีข้อมูลส่วนบุคคล ใช้ติดตามการชำระเงินภายในเท่านั้น',P,H-26);
+    cv.toBlob(function(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='รายชื่อคนยังไม่ชำระ-'+dateStamp()+'.png';a.click();toast('บันทึกรูปภาพแล้ว')},'image/png');
+  }
+  if(document.fonts&&document.fonts.load){Promise.all([document.fonts.load('400 26px Sarabun'),document.fonts.load('700 26px Sarabun')]).then(draw,draw)}else draw();
+}
 function printShip(){
   var w=window.open('','_blank');if(!w)return toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่');
   w.document.write('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>รายชื่อจัดส่ง</title><style>'+SHIP_CSS+'</style></head><body>'+shipHtml()+'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print()},400)}</scr'+'ipt></body></html>');
